@@ -1,0 +1,26 @@
+{
+  "name": "Coro Litúrgico Studio",
+  "short_name": "Coro Studio",
+  "description": "Cantoral offline, Visor con y sin acordes, diagramas de guitarra y teclado, Listas de cantos, Modo Atril, Metrónomo, Afinador y Grabadora.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1933",
+  "theme_color": "#b45309",
+  "orientation": "any",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
