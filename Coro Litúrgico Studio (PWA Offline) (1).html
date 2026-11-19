@@ -1,0 +1,4586 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#b45309" id="meta-theme-color" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Coro Studio" />
+  <meta name="description" content="Coro Litúrgico Studio: Cantoral offline, Visor con y sin acordes, diagramas de guitarra y teclado, Listas de cantos, Metrónomo, Afinador, Tonos de referencia y Grabadora." />
+  <title>Coro Litúrgico Studio</title>
+
+  <!-- Inline SVG App Icon (100% Offline) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='24' fill='%23111827'/%3E%3Cpath d='M50 18v64M32 38h36' stroke='%23b45309' stroke-width='7' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='50' r='37' fill='none' stroke='%23b45309' stroke-width='3' stroke-opacity='0.45'/%3E%3C/svg%3E" />
+
+  <!-- Embedded PWA Manifest (Data-URI) -->
+  <link rel="manifest" href="data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22Coro%20Lit%C3%BArgico%20Studio%22%2C%22short_name%22%3A%22Coro%20Studio%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230d1016%22%2C%22theme_color%22%3A%22%23b45309%22%2C%22orientation%22%3A%22any%22%7D" />
+
+  <style>
+    /* =====================================================================
+       1. DESIGN TOKENS & CSS VARIABLES (LIGHT & DARK THEME)
+       ===================================================================== */
+    :root {
+      --primary: #b45309;
+      --primary-hover: #92400e;
+      --primary-soft: rgba(180, 83, 9, 0.14);
+      --primary-border: rgba(180, 83, 9, 0.40);
+      --primary-contrast: #ffffff;
+
+      --bg: #f5f4f0;
+      --surface: #ffffff;
+      --surface-2: #eeece6;
+      --border: #dcd8ce;
+      --text: #171615;
+      --text-muted: #5b564f;
+
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.12);
+      --success: #16a34a;
+      --success-soft: rgba(22, 163, 74, 0.14);
+      --shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --header-h: 58px;
+      --nav-h: 64px;
+    }
+
+    body.dark {
+      --bg: #0d1016;
+      --surface: #151a23;
+      --surface-2: #1e2532;
+      --border: #2c3547;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
+    }
+
+    /* =====================================================================
+       2. BASE RESET & RESPONSIVE SHELL
+       ===================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      overscroll-behavior-y: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
+      color: inherit;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    button:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    #app-shell {
+      min-height: 100vh;
+      max-width: 960px;
+      margin: 0 auto;
+      padding-top: var(--header-h);
+      padding-bottom: calc(var(--nav-h) + 24px);
+      transition: padding 0.2s ease;
+    }
+
+    /* Immersive Fullscreen Fallback (for WebViews / iOS) */
+    body.immersive-fs .bottom-nav {
+      display: none !important;
+    }
+    body.immersive-fs #app-shell {
+      padding-bottom: 24px;
+      max-width: 1120px;
+    }
+
+    /* =====================================================================
+       3. FIXED TOP BAR
+       ===================================================================== */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .top-bar-inner {
+      width: 100%;
+      max-width: 960px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: var(--primary-contrast);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 3px 10px var(--primary-soft);
+    }
+
+    .brand-title {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 0.96rem;
+      font-weight: 700;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      display: block;
+      font-size: 0.63rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-top: -2px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .top-btn {
+      height: 36px;
+      padding: 0 9px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: 0.77rem;
+      font-weight: 700;
+      transition: transform 0.12s ease, background-color 0.15s ease;
+    }
+
+    .top-btn:active {
+      transform: scale(0.95);
+    }
+
+    .top-btn.primary-soft {
+      background: var(--primary-soft);
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    .top-btn.admin-unlocked {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-contrast);
+      box-shadow: 0 3px 10px var(--primary-soft);
+    }
+
+    .top-btn-label {
+      display: none;
+    }
+
+    @media (min-width: 520px) {
+      .top-btn-label { display: inline; }
+      .top-btn { padding: 0 11px; }
+    }
+
+    /* =====================================================================
+       4. SHARED COMPONENTS
+       ===================================================================== */
+    .view-section {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 15px;
+      box-shadow: var(--shadow);
+    }
+
+    .section-title {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .section-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 2px 0 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 700;
+      min-height: 40px;
+      transition: transform 0.12s ease, background-color 0.15s ease;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-contrast);
+      box-shadow: 0 3px 10px var(--primary-soft);
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .btn-soft {
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+    }
+
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-whatsapp {
+      background: rgba(22, 163, 74, 0.14);
+      color: #16a34a;
+      border: 1px solid rgba(22, 163, 74, 0.35);
+    }
+
+    .btn-danger {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border: 1px solid rgba(220, 38, 38, 0.30);
+    }
+
+    .btn-danger-solid {
+      background: var(--danger);
+      color: #ffffff;
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      min-height: 34px;
+      border-radius: 8px;
+    }
+
+    .btn-lg {
+      padding: 12px 18px;
+      font-size: 0.94rem;
+      min-height: 46px;
+      border-radius: 12px;
+    }
+
+    .input, .select, .textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .input:focus, .select:focus, .textarea:focus {
+      border-color: var(--primary);
+    }
+
+    .textarea {
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .row-wrap {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .segmented {
+      display: grid;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+      width: 100%;
+    }
+
+    .segmented.cols-2 { grid-template-columns: 1fr 1fr; }
+    .segmented.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .seg-btn {
+      padding: 7px 10px;
+      border-radius: 7px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: background-color 0.15s ease, color 0.15s ease;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .seg-btn.active {
+      background: var(--primary);
+      color: var(--primary-contrast);
+      box-shadow: 0 2px 6px var(--primary-soft);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.69rem;
+      font-weight: 700;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+    }
+
+    .badge-neutral {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.69rem;
+      font-weight: 700;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .info-notice {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.77rem;
+      color: var(--text-muted);
+    }
+
+    .admin-banner {
+      background: var(--primary-soft);
+      border: 1px solid var(--primary-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+
+    /* =====================================================================
+       5. CANTORAL & LISTAS CARDS
+       ===================================================================== */
+    .song-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 13px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s ease;
+    }
+
+    .song-card:hover { border-color: var(--primary-border); }
+
+    .song-card-main {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+    }
+
+    .song-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      font-size: 0.73rem;
+      color: var(--text-muted);
+    }
+
+    .song-card-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin: 4px 0 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .song-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .mini-icon-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .mini-icon-btn:hover {
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    .mini-icon-btn.danger:hover {
+      background: var(--danger-soft);
+      border-color: rgba(220, 38, 38, 0.35);
+      color: var(--danger);
+    }
+
+    /* Horizontal Lists Selector */
+    .lists-strip {
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      scrollbar-width: thin;
+    }
+
+    .list-tab-card {
+      flex-shrink: 0;
+      min-width: 160px;
+      max-width: 230px;
+      padding: 11px 13px;
+      border-radius: 12px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      text-align: left;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .list-tab-card:active { transform: scale(0.98); }
+
+    .list-tab-card.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .list-tab-title {
+      font-weight: 800;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+
+    .list-tab-sub {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .picker-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      cursor: pointer;
+    }
+
+    .picker-item.checked {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .picker-item input[type="checkbox"] {
+      width: 19px;
+      height: 19px;
+      accent-color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 26px 18px;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      background: var(--surface);
+    }
+
+    /* =====================================================================
+       6. VISOR, 1/2 COLUMNS, CHORD ALIGNMENT & DIRECTION NOTES
+       ===================================================================== */
+    .visor-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .control-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 9px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .direction-box {
+      background: var(--primary-soft);
+      border: 1px solid var(--primary-border);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 0.84rem;
+    }
+
+    .audio-ref-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: var(--shadow);
+    }
+
+    .sheet-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      min-height: 45vh;
+      box-shadow: var(--shadow);
+    }
+
+    .two-cols {
+      column-count: 2;
+      column-gap: 26px;
+      column-rule: 1px solid var(--border);
+    }
+
+    .stanza-block {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 1.05em;
+    }
+
+    .stanza-block:last-child { margin-bottom: 0; }
+
+    .lyric-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      margin-bottom: 0.44em;
+      line-height: 1.42;
+      min-height: 1.25em;
+    }
+
+    .lyric-seg {
+      display: inline-flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      vertical-align: bottom;
+      white-space: pre;
+    }
+
+    .chord-tag {
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 0.84em;
+      line-height: 1.15;
+      padding: 1px 4px;
+      margin-right: 0.2em;
+      margin-bottom: 0.1em;
+      border-radius: 5px;
+      display: inline-block;
+      align-self: flex-start;
+      transition: background-color 0.12s ease, transform 0.1s ease;
+    }
+
+    .chord-tag.clickable {
+      cursor: pointer;
+      background: var(--primary-soft);
+      border: 1px solid transparent;
+    }
+
+    .chord-tag.clickable:hover,
+    .chord-tag.clickable:active {
+      border-color: var(--primary-border);
+      transform: scale(1.04);
+    }
+
+    .lyric-txt { white-space: pre-wrap; }
+
+    .lyric-section-hdr {
+      font-size: 0.74em;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.35em;
+    }
+
+    /* Compact Lyrics Mode ("Sin acordes") */
+    .no-chords .lyric-line {
+      display: block;
+      margin-bottom: 0.2em;
+      line-height: 1.48;
+      min-height: auto;
+    }
+
+    .no-chords .lyric-seg {
+      display: inline;
+      white-space: normal;
+    }
+
+    .no-chords .chord-tag { display: none !important; }
+    .no-chords .stanza-block { margin-bottom: 0.82em; }
+
+    /* =====================================================================
+       7. MODO ATRIL OVERLAY
+       ===================================================================== */
+    #atril-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: #07090d;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .atril-bar {
+      padding: 10px 12px;
+      background: #11151d;
+      border-bottom: 1px solid #252d3c;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .atril-scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 18px 140px;
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    #atril-overlay .chord-tag {
+      color: var(--primary);
+      filter: brightness(1.3);
+    }
+
+    #atril-overlay .lyric-section-hdr { color: #9ca3af; }
+    #atril-overlay .two-cols { column-rule-color: #252d3c; }
+
+    .atril-btn {
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #1e2533;
+      color: #f3f4f6;
+      border: 1px solid #323c4e;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .atril-btn.active-atril {
+      background: var(--primary);
+      color: var(--primary-contrast);
+      border-color: var(--primary);
+    }
+
+    /* =====================================================================
+       8. METRONOME, TUNER, TONES & RECORDER
+       ===================================================================== */
+    .beat-lights {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 12px 0;
+    }
+
+    .beat-dot {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s ease, background-color 0.1s ease;
+    }
+
+    .beat-dot.accent-dot {
+      border-color: var(--primary-border);
+      color: var(--primary);
+    }
+
+    .beat-dot.lit {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-contrast);
+      transform: scale(1.2);
+      box-shadow: 0 0 14px var(--primary-soft);
+    }
+
+    .bpm-big {
+      font-size: 3.2rem;
+      font-weight: 800;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tuner-note-big {
+      font-size: 3.7rem;
+      font-weight: 800;
+      line-height: 1.05;
+      color: var(--text-muted);
+    }
+
+    .tuner-note-big.in-tune { color: var(--success); }
+    .tuner-note-big.off-tune { color: var(--primary); }
+
+    .tuner-meter {
+      position: relative;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin: 10px 0 6px;
+    }
+
+    .tuner-center-zone {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 44px;
+      transform: translateX(-50%);
+      background: var(--success-soft);
+      border-left: 1px solid rgba(22, 163, 74, 0.35);
+      border-right: 1px solid rgba(22, 163, 74, 0.35);
+    }
+
+    .tuner-center-line {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      transform: translateX(-50%);
+      background: var(--success);
+    }
+
+    .tuner-needle {
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      width: 8px;
+      border-radius: 999px;
+      background: var(--primary);
+      left: calc(50% - 4px);
+      transition: left 0.08s linear;
+    }
+
+    .tone-grid-6 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .tone-grid-12 {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    @media (min-width: 560px) {
+      .tone-grid-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+      .tone-grid-12 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    }
+
+    .tone-btn {
+      padding: 9px 6px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      text-align: center;
+      transition: all 0.14s ease;
+    }
+
+    .tone-btn.playing {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--primary-contrast);
+    }
+
+    .tone-btn .t-main { display: block; font-weight: 800; font-size: 0.9rem; }
+    .tone-btn .t-sub { display: block; font-size: 0.66rem; opacity: 0.78; }
+
+    .rec-canvas-wrap {
+      width: 100%;
+      height: 74px;
+      border-radius: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .rec-canvas-wrap canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .rec-timer-txt {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 2rem;
+      font-weight: 800;
+    }
+
+    .rec-pulse {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      display: inline-block;
+    }
+
+    .rec-pulse.live {
+      background: var(--danger);
+      animation: recBlink 1s infinite;
+    }
+
+    @keyframes recBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+
+    /* =====================================================================
+       9. MODALS, CHORD DIAGRAMS, SWATCHES & ADMIN PANEL
+       ===================================================================== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 95;
+      background: rgba(0, 0, 0, 0.68);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 550px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .swatch-btn {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px;
+      border-radius: 11px;
+      border: 1.5px solid var(--border);
+      background: var(--surface-2);
+      text-align: left;
+    }
+
+    .swatch-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+    }
+
+    .swatch-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      border: 2px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+
+    .chord-quick-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 6px;
+    }
+
+    .chord-chip {
+      padding: 5px 9px;
+      border-radius: 7px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      border: 1px solid var(--primary-border);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .chord-chip:active { transform: scale(0.93); }
+
+    .diagram-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .admin-stat-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .admin-stat-num {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+
+    .admin-stat-lbl {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .pin-hint {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    /* =====================================================================
+       10. BOTTOM NAVIGATION BAR (5 TABS)
+       ===================================================================== */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      z-index: 40;
+      display: flex;
+      justify-content: center;
+    }
+
+    .bottom-nav-inner {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      position: relative;
+    }
+
+    .nav-item .nav-emoji {
+      font-size: 1.16rem;
+      line-height: 1.1;
+    }
+
+    .nav-item.active {
+      color: var(--primary);
+    }
+
+    .nav-item.active::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 36px;
+      height: 3px;
+      border-radius: 0 0 4px 4px;
+      background: var(--primary);
+    }
+
+    .nav-badge-count {
+      position: absolute;
+      top: 5px;
+      right: calc(50% - 21px);
+      background: var(--primary);
+      color: var(--primary-contrast);
+      font-size: 0.59rem;
+      font-weight: 800;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 4px;
+    }
+
+    /* =====================================================================
+       11. TOASTS & CLEAN PRINT / PDF
+       ===================================================================== */
+    #toast-wrap {
+      position: fixed;
+      top: calc(var(--header-h) + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 90%;
+      max-width: 360px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    #print-sheet {
+      display: none;
+    }
+
+    @media print {
+      @page {
+        size: letter portrait;
+        margin: 1.2cm 1.3cm;
+      }
+      html, body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      #app-shell, .top-bar, .bottom-nav, #atril-overlay, #modal-backdrop, #toast-wrap {
+        display: none !important;
+      }
+      #print-sheet {
+        display: block !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      #print-sheet h1 {
+        font-family: Georgia, serif;
+        font-size: 16pt;
+        margin: 0 0 4pt;
+        text-align: center;
+        color: #000;
+      }
+      #print-sheet .p-meta {
+        text-align: center;
+        font-size: 9pt;
+        color: #222;
+        margin-bottom: 10pt;
+        padding-bottom: 5pt;
+        border-bottom: 1pt solid #000;
+      }
+      #print-sheet .p-notes {
+        font-size: 8.6pt;
+        font-style: italic;
+        margin-bottom: 9pt;
+        color: #222;
+      }
+      #print-sheet .p-body {
+        font-size: 10.2pt;
+        line-height: 1.35;
+      }
+      #print-sheet .two-cols {
+        column-count: 2;
+        column-gap: 20pt;
+        column-rule: 0.5pt solid #ccc;
+      }
+      #print-sheet .chord-tag {
+        color: #000000 !important;
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        font-weight: 800 !important;
+        font-size: 8.8pt !important;
+      }
+      #print-sheet .lyric-section-hdr {
+        color: #000000 !important;
+        font-size: 8.3pt !important;
+      }
+      #print-sheet .stanza-block {
+        break-inside: avoid;
+        margin-bottom: 8pt;
+      }
+      #print-sheet .p-list-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10pt;
+        margin-top: 8pt;
+      }
+      #print-sheet .p-list-table th,
+      #print-sheet .p-list-table td {
+        border-bottom: 0.6pt solid #999;
+        padding: 6pt 5pt;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- FIXED TOP BAR                                                         -->
+  <!-- ===================================================================== -->
+  <header class="top-bar">
+    <div class="top-bar-inner">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round">
+            <path d="M12 3v18M7 9h10" />
+          </svg>
+        </div>
+        <div style="min-width:0;">
+          <h1 class="brand-title">Coro Litúrgico Studio</h1>
+          <span id="brand-role-sub" class="brand-sub">Modo Coro</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button id="btn-admin-role" type="button" class="top-btn" title="Cambiar a Modo Administrador">
+          <span id="role-btn-text">🔒 Coro</span>
+        </button>
+
+        <button id="btn-open-theme" type="button" class="top-btn primary-soft" title="Color y apariencia">
+          <span>🎨</span>
+          <span class="top-btn-label">Color</span>
+        </button>
+
+        <button id="btn-fullscreen-top" type="button" class="top-btn" title="Pantalla completa">
+          <span id="fs-top-symbol" style="font-size:1rem; line-height:1;">⛶</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN APPLICATION SHELL                                                -->
+  <!-- ===================================================================== -->
+  <main id="app-shell">
+
+    <!-- =================================================================== -->
+    <!-- TAB 1: CANTORAL                                                     -->
+    <!-- =================================================================== -->
+    <section id="view-cantoral" class="view-section">
+      <!-- Admin Active Banner -->
+      <div id="cantoral-admin-banner" class="admin-banner hidden">
+        <span>🔓 Modo Administrador activo — puedes agregar, editar y borrar cantos</span>
+        <button id="btn-banner-lock" type="button" class="btn btn-secondary btn-sm" style="min-height:28px; padding:3px 9px;">🔒 Bloquear</button>
+      </div>
+
+      <!-- Discreet Choir Mode Notice -->
+      <div id="cantoral-coro-notice" class="info-notice">
+        <span>🔒 Modo Coro: toca <strong>🔒 Coro</strong> arriba para editar o agregar cantos al repertorio.</span>
+        <button id="btn-notice-unlock" type="button" class="btn btn-soft btn-sm" style="min-height:28px; padding:3px 9px; flex-shrink:0;">Admin</button>
+      </div>
+
+      <!-- Search + New Song (Admin) -->
+      <div class="row">
+        <input id="search-input" type="search" class="input" placeholder="Buscar canto por título o letra..." style="flex:1;" />
+        <button id="btn-new-song" type="button" class="btn btn-primary hidden" style="flex-shrink:0;">
+          + Nuevo Canto
+        </button>
+      </div>
+
+      <!-- Filters: Momento & Tiempo Litúrgico -->
+      <div class="grid-2">
+        <div>
+          <label class="field-label" for="filter-moment">Momento Litúrgico</label>
+          <select id="filter-moment" class="select"></select>
+        </div>
+        <div>
+          <label class="field-label" for="filter-season">Tiempo Litúrgico</label>
+          <select id="filter-season" class="select"></select>
+        </div>
+      </div>
+
+      <!-- Count + Backup (Admin) -->
+      <div class="row-between" style="font-size:0.78rem; color:var(--text-muted); padding:0 2px;">
+        <span id="songs-count-txt">0 cantos</span>
+        <div id="cantoral-backup-bar" class="row hidden" style="gap:6px;">
+          <button id="btn-export-json" type="button" class="btn btn-secondary btn-sm">Exportar JSON</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            Importar JSON
+            <input id="input-import-json" type="file" accept=".json,application/json" class="hidden" />
+          </label>
+        </div>
+      </div>
+
+      <div id="songs-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: VISOR                                                        -->
+    <!-- =================================================================== -->
+    <section id="view-visor" class="view-section hidden">
+      <!-- Active List Quick Navigation -->
+      <div id="visor-list-bar" class="card hidden" style="padding:9px 12px;">
+        <div class="row-between" style="flex-wrap:wrap; gap:6px;">
+          <button id="btn-visor-prev" type="button" class="btn btn-secondary btn-sm">◀ Anterior</button>
+          <span id="visor-list-pos" style="font-size:0.78rem; font-weight:800; color:var(--primary); text-align:center;">Canto 1 de 3</span>
+          <button id="btn-visor-next" type="button" class="btn btn-secondary btn-sm">Siguiente ▶</button>
+        </div>
+      </div>
+
+      <!-- Song Header & Controls -->
+      <div class="card">
+        <div class="row-between" style="align-items:flex-start;">
+          <div style="min-width:0;">
+            <div class="row-wrap" style="margin-bottom:5px;">
+              <span id="visor-moment" class="badge">Comunión</span>
+              <span id="visor-season" class="badge-neutral">Ordinario</span>
+              <span id="visor-bpm-tag" class="badge-neutral">74 BPM</span>
+            </div>
+            <h2 id="visor-title" class="section-title" style="font-size:1.3rem;">Altar de Paz</h2>
+            <p id="visor-key-summary" class="section-desc">Tono actual: D</p>
+          </div>
+
+          <div class="row" style="gap:4px; flex-shrink:0;">
+            <button id="btn-visor-edit" type="button" class="mini-icon-btn hidden" title="Editar canto">✏️</button>
+            <button id="btn-visor-del" type="button" class="mini-icon-btn danger hidden" title="Eliminar canto">🗑️</button>
+            <button id="btn-visor-wa" type="button" class="mini-icon-btn" title="Compartir por WhatsApp">📲</button>
+            <button id="btn-visor-print" type="button" class="mini-icon-btn" title="Imprimir / PDF">🖨️</button>
+          </div>
+        </div>
+
+        <!-- Con/Sin Acordes + 1/2 Cols -->
+        <div class="grid-2" style="margin-top:12px;">
+          <div class="segmented cols-2" role="group" aria-label="Acordes">
+            <button id="btn-chords-on" type="button" class="seg-btn active">Con acordes</button>
+            <button id="btn-chords-off" type="button" class="seg-btn">Sin acordes</button>
+          </div>
+          <div class="segmented cols-2" role="group" aria-label="Columnas">
+            <button id="btn-col-1" type="button" class="seg-btn active">1 Col</button>
+            <button id="btn-col-2" type="button" class="seg-btn">2 Cols</button>
+          </div>
+        </div>
+
+        <!-- Musical & Reading Controls -->
+        <div class="visor-controls-grid">
+          <div id="visor-transpose-box" class="control-box">
+            <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">Tono</span>
+            <div class="row" style="gap:4px;">
+              <button id="btn-tr-down" type="button" class="btn btn-secondary btn-sm">-1</button>
+              <button id="btn-tr-reset" type="button" class="btn btn-soft btn-sm" title="Restablecer tono" style="min-width:42px;">
+                <span id="visor-key-now">D</span>
+              </button>
+              <button id="btn-tr-up" type="button" class="btn btn-secondary btn-sm">+1</button>
+            </div>
+          </div>
+
+          <div id="visor-capo-box" class="control-box">
+            <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">Capo</span>
+            <select id="visor-capo-select" class="select" style="width:auto; padding:4px 8px; font-size:0.79rem;">
+              <option value="0">0 (Sin capo)</option>
+              <option value="1">Traste 1</option>
+              <option value="2">Traste 2</option>
+              <option value="3">Traste 3</option>
+              <option value="4">Traste 4</option>
+              <option value="5">Traste 5</option>
+              <option value="6">Traste 6</option>
+              <option value="7">Traste 7</option>
+            </select>
+          </div>
+
+          <div class="control-box">
+            <span style="font-size:0.72rem; font-weight:700; color:var(--text-muted);">Letra</span>
+            <div class="row" style="gap:4px;">
+              <button id="btn-font-minus" type="button" class="btn btn-secondary btn-sm">A-</button>
+              <button id="btn-font-plus" type="button" class="btn btn-secondary btn-sm">A+</button>
+            </div>
+          </div>
+
+          <div class="control-box">
+            <button id="btn-scroll-toggle" type="button" class="btn btn-secondary btn-sm" style="flex:1;">Scroll</button>
+            <button id="btn-open-atril" type="button" class="btn btn-primary btn-sm" style="flex:1;">📖 Modo Atril</button>
+          </div>
+        </div>
+
+        <!-- Auto-scroll Speed -->
+        <div id="scroll-speed-bar" class="row hidden" style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border);">
+          <span style="font-size:0.76rem; color:var(--text-muted); font-weight:700;">Velocidad scroll:</span>
+          <input id="scroll-speed-range" type="range" min="1" max="10" value="3" style="flex:1;" />
+          <span id="scroll-speed-val" style="font-size:0.8rem; font-weight:800; color:var(--primary); width:20px; text-align:right;">3</span>
+        </div>
+      </div>
+
+      <!-- Direction Notes Box -->
+      <div id="visor-notes-wrap" class="direction-box hidden">
+        <div class="row-between">
+          <strong style="font-size:0.79rem; color:var(--primary);">🎼 Indicaciones de dirección</strong>
+          <button id="btn-toggle-notes" type="button" class="btn btn-secondary btn-sm" style="min-height:26px; padding:2px 8px; font-size:0.72rem;">Ocultar</button>
+        </div>
+        <p id="visor-notes-text" style="margin:6px 0 0; line-height:1.45;"></p>
+      </div>
+
+      <!-- Reference Audio Player -->
+      <div id="visor-audio-wrap" class="audio-ref-box hidden">
+        <div class="row-between">
+          <span style="font-size:0.76rem; font-weight:800; color:var(--primary);">🎧 Audio de referencia</span>
+          <span id="visor-audio-name" style="font-size:0.72rem; color:var(--text-muted);"></span>
+        </div>
+        <audio id="visor-audio-player" controls style="width:100%; height:38px;"></audio>
+      </div>
+
+      <!-- Interactive Chord Hint -->
+      <div id="visor-chord-hint" style="font-size:0.75rem; color:var(--text-muted); padding:0 4px;">
+        💡 Toca cualquier acorde para ver su diagrama en guitarra y teclado, y escucharlo.
+      </div>
+
+      <!-- Song Sheet -->
+      <div id="visor-sheet" class="sheet-container" style="font-size:16px;"></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: LISTAS (ALWAYS VISIBLE IN BOTH CORO & ADMIN MODES)           -->
+    <!-- =================================================================== -->
+    <section id="view-listas" class="view-section hidden">
+      <!-- Top Prominent Action Header -->
+      <div class="card" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="row-between" style="flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 class="section-title">📋 Listados de Cantos</h2>
+            <p class="section-desc">Organiza el orden de Misas, Horas Santas o ensayos.</p>
+          </div>
+          <button id="btn-new-list" type="button" class="btn btn-primary btn-lg" style="width:100%; max-width:220px;">
+            + Nuevo Listado
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Selector of Saved Lists -->
+      <div>
+        <span class="field-label" style="padding-left:2px;">Tus listados guardados (toca uno para verlo)</span>
+        <div id="lists-tabs-bar" class="lists-strip"></div>
+      </div>
+
+      <!-- Active List Detail Card -->
+      <div id="active-list-panel" class="card" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="row-between" style="align-items:flex-start; flex-wrap:wrap; gap:8px;">
+          <div style="min-width:0; flex:1;">
+            <span class="badge" style="margin-bottom:4px;">Listado activo</span>
+            <h3 id="al-title" class="section-title" style="font-size:1.3rem;">Misa Dominical</h3>
+            <p id="al-date-desc" class="section-desc"></p>
+            <p id="al-count-desc" class="section-desc" style="font-weight:700; color:var(--primary); margin-top:4px;">0 cantos seleccionados</p>
+          </div>
+          <!-- Always visible Rename & Delete buttons -->
+          <div class="row-wrap" style="gap:6px;">
+            <button id="btn-rename-list" type="button" class="btn btn-secondary btn-sm">✏️ Renombrar</button>
+            <button id="btn-delete-list" type="button" class="btn btn-danger btn-sm">🗑️ Eliminar lista</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Always visible Action Bar -->
+        <div class="row-wrap">
+          <button id="btn-list-select-songs" type="button" class="btn btn-primary btn-sm">+ Seleccionar cantos</button>
+          <button id="btn-list-start-atril" type="button" class="btn btn-soft btn-sm">📖 Modo Atril</button>
+          <button id="btn-list-whatsapp" type="button" class="btn btn-whatsapp btn-sm">📲 WhatsApp</button>
+          <button id="btn-list-print" type="button" class="btn btn-secondary btn-sm">🖨️ Imprimir Orden</button>
+        </div>
+      </div>
+
+      <!-- Numbered Songs inside Active List -->
+      <div id="active-list-songs" style="display:flex; flex-direction:column; gap:9px;"></div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 4: METRÓNOMO                                                    -->
+    <!-- =================================================================== -->
+    <section id="view-metronomo" class="view-section hidden">
+      <div class="card" style="text-align:center;">
+        <h2 class="section-title">⏱️ Metrónomo</h2>
+        <p class="section-desc">Web Audio API (40–220 BPM) con acento en el tiempo 1</p>
+
+        <div id="metro-lights" class="beat-lights"></div>
+
+        <div class="row" style="justify-content:center; gap:10px; margin:14px 0 6px;">
+          <button id="btn-bpm-dec5" type="button" class="btn btn-secondary btn-sm">-5</button>
+          <button id="btn-bpm-dec1" type="button" class="btn btn-secondary" style="width:42px; height:42px; border-radius:50%; font-size:1.15rem;">−</button>
+          <div style="min-width:96px;">
+            <div id="metro-bpm-val" class="bpm-big">80</div>
+            <div style="font-size:0.73rem; font-weight:800; color:var(--primary); letter-spacing:0.1em;">BPM</div>
+          </div>
+          <button id="btn-bpm-inc1" type="button" class="btn btn-secondary" style="width:42px; height:42px; border-radius:50%; font-size:1.15rem;">+</button>
+          <button id="btn-bpm-inc5" type="button" class="btn btn-secondary btn-sm">+5</button>
+        </div>
+
+        <div id="metro-tempo-label" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:10px;">Andante</div>
+
+        <button id="btn-metro-load-song" type="button" class="btn btn-soft btn-sm" style="margin-bottom:12px;">
+          🎵 Cargar BPM del canto actual
+        </button>
+
+        <input id="metro-slider" type="range" min="40" max="220" value="80" style="width:100%;" />
+        <div class="row-between" style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+          <span>40</span><span>130</span><span>220</span>
+        </div>
+
+        <div style="margin-top:16px;">
+          <span class="field-label">Compás</span>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px; max-width:320px; margin:6px auto 0;">
+            <button type="button" data-ts="2" class="ts-btn btn btn-secondary btn-sm">2/4</button>
+            <button type="button" data-ts="3" class="ts-btn btn btn-secondary btn-sm">3/4</button>
+            <button type="button" data-ts="4" class="ts-btn btn btn-soft btn-sm">4/4</button>
+            <button type="button" data-ts="6" class="ts-btn btn btn-secondary btn-sm">6/8</button>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:18px; max-width:340px; margin-left:auto; margin-right:auto;">
+          <button id="btn-metro-play" type="button" class="btn btn-primary">▶ Iniciar</button>
+          <button id="btn-metro-tap" type="button" class="btn btn-secondary">Tap Tempo</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TAB 5: ESTUDIO (AFINADOR / TONOS / GRABADORA)                       -->
+    <!-- =================================================================== -->
+    <section id="view-estudio" class="view-section hidden">
+      <div class="segmented cols-3">
+        <button id="subtab-afinador" type="button" class="seg-btn active">Afinador</button>
+        <button id="subtab-tonos" type="button" class="seg-btn">Tonos</button>
+        <button id="subtab-grabadora" type="button" class="seg-btn">Grabadora</button>
+      </div>
+
+      <!-- SUB-PANEL 1: AFINADOR CROMÁTICO -->
+      <div id="panel-afinador" class="card" style="text-align:center;">
+        <div class="row-between" style="text-align:left;">
+          <div>
+            <h2 class="section-title">Afinador Cromático</h2>
+            <p class="section-desc">Detección por micrófono (La = 440 Hz)</p>
+          </div>
+          <button id="btn-tuner-toggle" type="button" class="btn btn-primary btn-sm">Activar Mic</button>
+        </div>
+
+        <div style="margin:14px 0 6px;">
+          <div id="tuner-note" class="tuner-note-big">--</div>
+          <div style="font-size:0.84rem; color:var(--text-muted); font-weight:700; margin-top:4px;">
+            <span id="tuner-freq">0.0 Hz</span> &nbsp;•&nbsp; <span id="tuner-cents">0 cents</span>
+          </div>
+        </div>
+
+        <div class="tuner-meter">
+          <div class="tuner-center-zone"></div>
+          <div class="tuner-center-line"></div>
+          <div id="tuner-needle" class="tuner-needle"></div>
+        </div>
+        <div class="row-between" style="font-size:0.74rem; font-weight:700; color:var(--text-muted);">
+          <span>♭ Bajo</span>
+          <span id="tuner-status">En espera</span>
+          <span>Alto ♯</span>
+        </div>
+        <p id="tuner-err" class="hidden" style="color:var(--danger); font-size:0.8rem; margin:10px 0 0;"></p>
+      </div>
+
+      <!-- SUB-PANEL 2: TONOS DE REFERENCIA -->
+      <div id="panel-tonos" class="card hidden">
+        <div class="row-between" style="margin-bottom:10px;">
+          <div>
+            <h2 class="section-title">Tonos de Referencia</h2>
+            <p class="section-desc">Toca una nota para escucharla o detenerla.</p>
+          </div>
+          <button id="btn-ref-stop" type="button" class="btn btn-danger btn-sm hidden">Silenciar</button>
+        </div>
+
+        <span class="field-label">Guitarra (6 cuerdas E2–E4)</span>
+        <div id="guitar-tones-grid" class="tone-grid-6" style="margin-bottom:16px;"></div>
+
+        <span class="field-label">Escala Vocal (C4–B4)</span>
+        <div id="vocal-tones-grid" class="tone-grid-12"></div>
+      </div>
+
+      <!-- SUB-PANEL 3: GRABADORA DE ENSAYOS -->
+      <div id="panel-grabadora" class="hidden" style="display:flex; flex-direction:column; gap:13px;">
+        <div class="card" style="text-align:center;">
+          <h2 class="section-title">Grabadora de Ensayos</h2>
+          <p class="section-desc">Graba al coro, escucha tus tomas y descárgalas</p>
+
+          <div class="rec-canvas-wrap" style="margin:14px 0;">
+            <canvas id="rec-canvas"></canvas>
+          </div>
+
+          <div class="row" style="justify-content:center; margin-bottom:14px;">
+            <span id="rec-dot" class="rec-pulse"></span>
+            <span id="rec-timer" class="rec-timer-txt">00:00</span>
+          </div>
+
+          <div class="row" style="justify-content:center; gap:12px;">
+            <button id="btn-rec-start" type="button" class="btn btn-danger-solid" style="min-width:120px;">● Grabar</button>
+            <button id="btn-rec-stop" type="button" class="btn btn-secondary" disabled style="min-width:120px;">■ Detener</button>
+          </div>
+          <p id="rec-err" class="hidden" style="color:var(--danger); font-size:0.8rem; margin:10px 0 0;"></p>
+        </div>
+
+        <div class="row-between" style="padding:0 2px;">
+          <span class="field-label" style="margin:0;">Grabaciones de la Sesión</span>
+          <span id="rec-count" style="font-size:0.78rem; color:var(--text-muted);">0 audios</span>
+        </div>
+        <div id="rec-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- FIXED BOTTOM NAVIGATION BAR (5 TABS)                                  -->
+  <!-- ===================================================================== -->
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <div class="bottom-nav-inner">
+      <button type="button" class="nav-item active" data-tab="cantoral">
+        <span class="nav-emoji">🎵</span>
+        <span>Cantoral</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="visor">
+        <span class="nav-emoji">📖</span>
+        <span>Visor</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="listas">
+        <span id="listas-nav-badge" class="nav-badge-count hidden">0</span>
+        <span class="nav-emoji">📋</span>
+        <span>Listas</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="metronomo">
+        <span class="nav-emoji">⏱️</span>
+        <span>Metrónomo</span>
+      </button>
+      <button type="button" class="nav-item" data-tab="estudio">
+        <span class="nav-emoji">🎙️</span>
+        <span>Estudio</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===================================================================== -->
+  <!-- MODO ATRIL OVERLAY                                                    -->
+  <!-- ===================================================================== -->
+  <div id="atril-overlay" class="hidden">
+    <div class="atril-bar">
+      <div class="row-between">
+        <div style="min-width:0;">
+          <div id="atril-title" style="font-family:Georgia,serif; font-weight:700; font-size:1.06rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Canto</div>
+          <div id="atril-meta" style="font-size:0.72rem; color:#9ca3af;">Tono D</div>
+        </div>
+        <div class="row" style="gap:6px; flex-shrink:0;">
+          <button id="btn-atril-fs" type="button" class="atril-btn" title="Pantalla completa">⛶</button>
+          <button id="btn-close-atril" type="button" class="atril-btn active-atril">Salir</button>
+        </div>
+      </div>
+
+      <div class="row-between" style="flex-wrap:wrap; gap:6px;">
+        <div class="row" style="gap:5px; flex-wrap:wrap;">
+          <button id="atril-chords-on" type="button" class="atril-btn active-atril">Con acordes</button>
+          <button id="atril-chords-off" type="button" class="atril-btn">Sin acordes</button>
+          <button id="atril-cols-btn" type="button" class="atril-btn">1 Col</button>
+          <button id="atril-font-dec" type="button" class="atril-btn">A-</button>
+          <button id="atril-font-inc" type="button" class="atril-btn">A+</button>
+          <button id="atril-scroll-btn" type="button" class="atril-btn">Scroll</button>
+        </div>
+
+        <div id="atril-list-nav" class="row hidden" style="gap:5px;">
+          <button id="atril-prev" type="button" class="atril-btn">◀ Anterior</button>
+          <span id="atril-list-pos" style="font-size:0.74rem; color:#9ca3af; font-weight:700;">1/3</span>
+          <button id="atril-next" type="button" class="atril-btn">Siguiente ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="atril-scroll-area" class="atril-scroll-area">
+      <div id="atril-sheet" style="font-size:20px;"></div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL BACKDROP, TOASTS & PRINT SHEET                                  -->
+  <!-- ===================================================================== -->
+  <div id="modal-backdrop" class="modal-backdrop hidden">
+    <div id="modal-card" class="modal-card"></div>
+  </div>
+  <div id="toast-wrap"></div>
+  <div id="print-sheet"></div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION JAVASCRIPT (100% OFFLINE & SELF-CONTAINED)                -->
+  <!-- ===================================================================== -->
+  <script>
+    (function () {
+      'use strict';
+
+      // ===================================================================
+      // 1. CONSTANTS, PALETTES, CHORD DICTIONARY & DEFAULT REPERTOIRE
+      // ===================================================================
+      const STORAGE = {
+        SONGS: 'cls_v6_songs',
+        LISTS: 'cls_v6_lists',
+        THEME: 'cls_v6_theme',
+        SHOW_CHORDS: 'cls_v6_show_chords',
+        TWO_COLS: 'cls_v6_two_cols',
+        ADMIN_PIN: 'cls_v6_admin_pin'
+      };
+
+      const DEFAULT_ADMIN_PIN = '1234';
+
+      const LITURGICAL_PALETTES = [
+        { name: 'Oro Litúrgico', hex: '#b45309' },
+        { name: 'Verde Ordinario', hex: '#15803d' },
+        { name: 'Morado Adviento/Cuaresma', hex: '#6d28d9' },
+        { name: 'Rojo Pentecostés', hex: '#b91c1c' },
+        { name: 'Azul Mariano', hex: '#1d4ed8' },
+        { name: 'Borgoña Solemne', hex: '#881337' }
+      ];
+
+      const MOMENTS = [
+        'Todos', 'Entrada', 'Kyrie', 'Gloria', 'Salmo', 'Aleluya',
+        'Ofertorio', 'Santo', 'Cordero', 'Comunión', 'Salida', 'Adoración', 'Mariano'
+      ];
+
+      const SEASONS = [
+        'Todos', 'Ordinario', 'Adviento', 'Navidad', 'Cuaresma', 'Pascua', 'Mariano'
+      ];
+
+      const INITIAL_KEYS = [
+        'C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B',
+        'Am', 'Bm', 'Cm', 'Dm', 'Em', 'Fm', 'Gm'
+      ];
+
+      const QUICK_CHORD_BTNS = [
+        { label: '[C]', val: '[C]' },
+        { label: '[D]', val: '[D]' },
+        { label: '[E]', val: '[E]' },
+        { label: '[F]', val: '[F]' },
+        { label: '[G]', val: '[G]' },
+        { label: '[A]', val: '[A]' },
+        { label: '[B]', val: '[B]' },
+        { label: '[m]', mod: 'm' },
+        { label: '[7]', mod: '7' }
+      ];
+
+      const CHROMATIC_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const NOTE_NAMES_ES = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+      const FLAT_MAP = {
+        'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#',
+        'Cb': 'B', 'Fb': 'E', 'E#': 'F', 'B#': 'C'
+      };
+
+      const DEFAULT_SONGS = [
+        {
+          id: 'song-altar-de-paz',
+          title: 'Altar de Paz',
+          moment: 'Comunión',
+          season: 'Ordinario',
+          key: 'D',
+          bpm: 74,
+          notes: 'Iniciar solo con guitarra arpegiada y voz solista en la Estrofa 1. En el Coro entran todas las voces en armonía suave y constante.',
+          audioUrl: '',
+          audioName: '',
+          lyrics: `[ESTROFA 1]
+[D]Altar de paz, [G]mesa del Se[A7]ñor,
+[Bm]donde tu [F#m]cuerpo se [G]entrega por a[A7]mor.
+[D]Pan de la [D/F#]vida que [G]sana el cora[Em]zón,
+[A7]fuente de gracia y de [D]comunión.
+
+[CORO]
+[G]Ven, Señor Je[A7]sús, quédate con [F#m]noso[Bm]tros,
+[Em]haz de nuestra [A7]vida un canto de [D]paz.[D7]
+[G]Danos de tu [A7]pan, danos de tu [F#m]vi[Bm]no,
+[Em]guía nuestros [A7]pasos a la eterni[D]dad.
+
+[ESTROFA 2]
+[D]En el si[G]lencio te puedo encon[A7]trar,
+[Bm]luz de espe[F#m]ranza que [G]brilla en el al[A7]tar.
+[D]Toma mis [D/F#]manos, re[G]nueva mi [Em]fe,
+[A7]junto a mis hermanos te [D]serviré.`
+        },
+        {
+          id: 'song-pan-compartido',
+          title: 'Pan Compartido',
+          moment: 'Comunión',
+          season: 'Ordinario',
+          key: 'G',
+          bpm: 76,
+          notes: 'Mantener ritmo calmado; en la Estrofa 2 cantan solo voces femeninas hasta el Coro.',
+          audioUrl: '',
+          audioName: '',
+          lyrics: `[CORO]
+[G]Pan compar[D/F#]tido en [Em]tu al[Bm]tar,
+[C]vino de [G]gracia, [Am]signo de u[D7]nidad.
+[G]Somos tu [D/F#]pueblo que [Em]viene a can[Bm]tar,
+[C]danos tu [D7]vida, Señor, en este [G]pan.
+
+[ESTROFA 1]
+[C]Como los [D]granos de [Bm]trigo en el [Em]campo
+[Am]se hacen un [D7]solo pan para el her[G]mano,[G7]
+[C]así tu I[D]glesia reu[Bm]nida en tu [Em]nombre
+[Am]celebra el mis[C]terio de tu a[D7]mor.
+
+[ESTROFA 2]
+[C]Tú nos in[D]vitas a [Bm]ser tu pre[Em]sencia,
+[Am]luz en el [D7]mundo, consuelo y espe[G]ranza,[G7]
+[C]llevando a [D]todos el [Bm]gozo del [Em]Reino
+[Am]que nace en la [D7]mesa del Se[G]ñor.`
+        },
+        {
+          id: 'song-victoria-alborada',
+          title: 'Victoria en la Alborada',
+          moment: 'Salida',
+          season: 'Pascua',
+          key: 'D',
+          bpm: 96,
+          notes: 'Tempo alegre y festivo; acentuar el rasgueo en el Coro final.',
+          audioUrl: '',
+          audioName: '',
+          lyrics: `[CORO]
+[D]Canta con gozo, [G]pueblo del Se[A7]ñor,
+[Bm]brilla la vic[G]toria en la albo[A7]rada.
+[D]Cristo ha ven[D/F#]cido, [G]vive entre noso[Em]tros,
+[A7]vayan por el mundo a procla[D]marlo.
+
+[ESTROFA 1]
+[D]Con la alegría de [G]ser tus tes[D]tigos
+[Bm]salimos juntos ha[E7]cia los ca[A7]minos,
+[G]llevando al [A7]pobre tu [F#m]voz de consue[Bm]lo,
+[Em]sembrando [A7]siempre tu paz y tu a[D]mor.
+
+[ESTROFA 2]
+[D]Nada tememos si [G]tú vas de[D]lante,
+[Bm]tu Espíritu Santo [E7]guía nuestro [A7]paso.
+[G]Honor y [A7]gloria al [F#m]Padre en el [Bm]cielo,
+[Em]por los [A7]siglos de los siglos. A[D]mén.`
+        },
+        {
+          id: 'song-santo-solemne',
+          title: 'Santo Solemne',
+          moment: 'Santo',
+          season: 'Ordinario',
+          key: 'F',
+          bpm: 72,
+          notes: 'Cantar con solemnidad y buen sostén de aire; crescendo progresivo en el Hosanna.',
+          audioUrl: '',
+          audioName: '',
+          lyrics: `[ESTROFA 1]
+[F]Santo, [C]Santo, [Dm]Santo es el Se[Am]ñor,
+[Bb]Dios del [F]Uni[Gm]verso.[C7]
+[F]Llenos es[C]tán el [Dm]cielo y la [Am]tierra
+[Bb]de tu [C7]glo[F]ria.
+
+[CORO]
+Ho[Bb]sanna, ho[C7]sanna, ho[Am]sanna en el [Dm]cielo.
+Ho[Gm]sanna, ho[C7]sanna al Se[F]ñor.[F7]
+
+[ESTROFA 2]
+Ben[Bb]dito el que [C7]viene en [Am]nombre del Se[Dm]ñor.
+Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
+        },
+        {
+          id: 'song-mesa-preparada',
+          title: 'La Mesa Preparada',
+          moment: 'Comunión',
+          season: 'Navidad',
+          key: 'D',
+          bpm: 78,
+          notes: 'Carácter tierno y navideño; acompañar con teclado suave o guitarra acústica.',
+          audioUrl: '',
+          audioName: '',
+          lyrics: `[ESTROFA 1]
+[D]En el si[G]lencio de la [A7]noche santa,
+[Bm]Dios ha na[F#m]cido en un [G]pobre por[A7]tal.
+[D]Hoy en tu [D/F#]mesa nos [G]das tu pre[Em]sencia,
+[A7]Pan vivo bajado del cielo de [D]paz.
+
+[CORO]
+[G]La mesa es[A7]tá prepa[F#m]rada, Se[Bm]ñor,
+[Em]ven a mo[A7]rar en mi [D]corazón.[D7]
+[G]Niño de [A7]luz, Emma[F#m]nuel, Salva[Bm]dor,
+[Em]quédate [A7]siempre con tu pueblo en a[D]mor.
+
+[ESTROFA 2]
+[D]Brilla la es[G]trella que [A7]guía a tu altar,
+[Bm]donde los [F#m]pobres te [G]pueden ha[A7]llar.
+[D]Toma mi [D/F#]vida, haz[G]la tu pe[Em]sebre,
+[A7]canto de gloria en esta Navi[D]dad.`
+        }
+      ];
+
+      const DEFAULT_LISTS = [
+        {
+          id: 'list-misa-dominical',
+          name: 'Misa Dominical',
+          date: 'Domingo Ordinario',
+          songIds: ['song-santo-solemne', 'song-altar-de-paz', 'song-victoria-alborada']
+        },
+        {
+          id: 'list-hora-santa',
+          name: 'Hora Santa',
+          date: 'Jueves Eucarístico',
+          songIds: ['song-altar-de-paz', 'song-pan-compartido']
+        }
+      ];
+
+      const GUITAR_STRINGS = [
+        { label: 'E2', sub: '6ª • 82 Hz', freq: 82.41 },
+        { label: 'A2', sub: '5ª • 110 Hz', freq: 110.00 },
+        { label: 'D3', sub: '4ª • 147 Hz', freq: 146.83 },
+        { label: 'G3', sub: '3ª • 196 Hz', freq: 196.00 },
+        { label: 'B3', sub: '2ª • 247 Hz', freq: 246.94 },
+        { label: 'E4', sub: '1ª • 330 Hz', freq: 329.63 }
+      ];
+
+      const VOCAL_SCALE = [
+        { label: 'C4', sub: 'Do', freq: 261.63 },
+        { label: 'C#4', sub: 'Do#', freq: 277.18 },
+        { label: 'D4', sub: 'Re', freq: 293.66 },
+        { label: 'D#4', sub: 'Re#', freq: 311.13 },
+        { label: 'E4', sub: 'Mi', freq: 329.63 },
+        { label: 'F4', sub: 'Fa', freq: 349.23 },
+        { label: 'F#4', sub: 'Fa#', freq: 369.99 },
+        { label: 'G4', sub: 'Sol', freq: 392.00 },
+        { label: 'G#4', sub: 'Sol#', freq: 415.30 },
+        { label: 'A4', sub: 'La 440', freq: 440.00 },
+        { label: 'A#4', sub: 'Si♭', freq: 466.16 },
+        { label: 'B4', sub: 'Si', freq: 493.88 }
+      ];
+
+      // ===================================================================
+      // 2. APPLICATION STATE
+      // ===================================================================
+      const state = {
+        isAdmin: false,
+        adminPin: DEFAULT_ADMIN_PIN,
+        theme: { primary: '#b45309', dark: true },
+        showChords: true,
+        twoCols: false,
+        notesVisible: true,
+        immersiveFs: false,
+
+        songs: [],
+        lists: [],
+        activeListId: null,
+        sessionAudioMap: {},
+
+        activeTab: 'cantoral',
+        activeEstudioSub: 'afinador',
+        filterMoment: 'Todos',
+        filterSeason: 'Todos',
+        searchQuery: '',
+
+        // Visor & Atril
+        visorSongId: null,
+        visorListId: null,
+        visorListIndex: 0,
+        transpose: 0,
+        capo: 0,
+        fontSize: 16,
+        atrilFontSize: 20,
+        scrollActive: false,
+        scrollSpeed: 3,
+        wakeLock: null,
+
+        // Shared Web Audio Context
+        audioCtx: null,
+
+        // Metronome
+        metroRunning: false,
+        metroBpm: 80,
+        metroTs: 4,
+        metroBeat: 0,
+        metroNextTime: 0,
+        metroTimer: null,
+        tapTimes: [],
+
+        // Tuner & Reference Tones
+        tunerRunning: false,
+        tunerStream: null,
+        tunerAnalyser: null,
+        tunerRaf: null,
+        refNodes: null,
+        refActiveKey: null,
+
+        // Recorder
+        recRunning: false,
+        recRecorder: null,
+        recStream: null,
+        recChunks: [],
+        recStart: 0,
+        recTimerInt: null,
+        recAnalyser: null,
+        recRaf: null,
+        recordings: []
+      };
+
+      // ===================================================================
+      // 3. UTILITIES: COLOR, STORAGE, TOASTS, MODALS, AUDIO
+      // ===================================================================
+      function hexToRgb(hex) {
+        const clean = String(hex || '#b45309').replace('#', '');
+        const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean;
+        const num = parseInt(full, 16);
+        return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+      }
+
+      function darkenHex(hex, factor = 0.84) {
+        const { r, g, b } = hexToRgb(hex);
+        const h = v => Math.max(0, Math.min(255, Math.round(v * factor))).toString(16).padStart(2, '0');
+        return `#${h(r)}${h(g)}${h(b)}`;
+      }
+
+      function getContrastText(hex) {
+        const { r, g, b } = hexToRgb(hex);
+        return ((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.65 ? '#111827' : '#ffffff';
+      }
+
+      function applyTheme(primaryHex, isDark, persist = true) {
+        state.theme.primary = primaryHex || '#b45309';
+        state.theme.dark = Boolean(isDark);
+
+        const root = document.documentElement;
+        const { r, g, b } = hexToRgb(state.theme.primary);
+        root.style.setProperty('--primary', state.theme.primary);
+        root.style.setProperty('--primary-hover', darkenHex(state.theme.primary, 0.84));
+        root.style.setProperty('--primary-soft', `rgba(${r}, ${g}, ${b}, 0.14)`);
+        root.style.setProperty('--primary-border', `rgba(${r}, ${g}, ${b}, 0.40)`);
+        root.style.setProperty('--primary-contrast', getContrastText(state.theme.primary));
+
+        document.body.classList.toggle('dark', state.theme.dark);
+        document.getElementById('meta-theme-color').setAttribute('content', state.theme.dark ? '#0d1016' : state.theme.primary);
+
+        if (persist) {
+          try { localStorage.setItem(STORAGE.THEME, JSON.stringify(state.theme)); } catch (e) {}
+        }
+      }
+
+      function loadStorage() {
+        try {
+          const pin = localStorage.getItem(STORAGE.ADMIN_PIN);
+          if (pin && pin.trim().length >= 4) state.adminPin = pin.trim();
+        } catch (e) {}
+
+        try {
+          const t = JSON.parse(localStorage.getItem(STORAGE.THEME) || 'null');
+          if (t && t.primary) state.theme = { primary: t.primary, dark: Boolean(t.dark) };
+        } catch (e) {}
+
+        try {
+          const sc = localStorage.getItem(STORAGE.SHOW_CHORDS);
+          if (sc !== null) state.showChords = sc === 'true';
+        } catch (e) {}
+
+        try {
+          const tc = localStorage.getItem(STORAGE.TWO_COLS);
+          if (tc !== null) state.twoCols = tc === 'true';
+        } catch (e) {}
+
+        try {
+          const s = JSON.parse(localStorage.getItem(STORAGE.SONGS) || 'null');
+          state.songs = Array.isArray(s) && s.length > 0 ? s : JSON.parse(JSON.stringify(DEFAULT_SONGS));
+        } catch (e) {
+          state.songs = JSON.parse(JSON.stringify(DEFAULT_SONGS));
+        }
+
+        state.songs.forEach(s => {
+          if (!s.season) s.season = 'Ordinario';
+          if (typeof s.notes !== 'string') s.notes = '';
+          if (typeof s.audioUrl !== 'string') s.audioUrl = '';
+          if (typeof s.audioName !== 'string') s.audioName = '';
+        });
+
+        try {
+          const l = JSON.parse(localStorage.getItem(STORAGE.LISTS) || 'null');
+          if (Array.isArray(l) && l.length > 0) {
+            state.lists = l.map(item => ({
+              id: item.id || ('list-' + Date.now() + Math.random()),
+              name: item.name || 'Listado',
+              date: item.date || '',
+              songIds: Array.isArray(item.songIds) ? item.songIds.filter(id => state.songs.some(x => x.id === id)) : []
+            }));
+          } else {
+            state.lists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+          }
+        } catch (e) {
+          state.lists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+        }
+
+        state.activeListId = state.lists[0] ? state.lists[0].id : null;
+        state.visorSongId = state.songs[0] ? state.songs[0].id : null;
+      }
+
+      function saveSongs() {
+        try { localStorage.setItem(STORAGE.SONGS, JSON.stringify(state.songs)); } catch (e) {
+          showToast('Aviso: almacenamiento lleno (el audio local grande se mantiene en esta sesión).');
+        }
+      }
+
+      function saveLists() {
+        try { localStorage.setItem(STORAGE.LISTS, JSON.stringify(state.lists)); } catch (e) {}
+        updateListasNavBadge();
+      }
+
+      function saveAdminPin(newPin) {
+        state.adminPin = newPin;
+        try { localStorage.setItem(STORAGE.ADMIN_PIN, newPin); } catch (e) {}
+      }
+
+      function getAudioCtx() {
+        if (!state.audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          state.audioCtx = new Ctx();
+        }
+        if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+        return state.audioCtx;
+      }
+
+      function esc(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function showToast(msg) {
+        const wrap = document.getElementById('toast-wrap');
+        const el = document.createElement('div');
+        el.className = 'toast';
+        el.textContent = msg;
+        wrap.appendChild(el);
+        setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(-8px)';
+          setTimeout(() => el.remove(), 260);
+        }, 2300);
+      }
+
+      function openModal(html) {
+        document.getElementById('modal-card').innerHTML = html;
+        document.getElementById('modal-backdrop').classList.remove('hidden');
+      }
+
+      function closeModal() {
+        document.getElementById('modal-backdrop').classList.add('hidden');
+      }
+
+      function confirmDialog(title, msg, okText, onOk) {
+        openModal(`
+          <h3 class="section-title">${esc(title)}</h3>
+          <p style="margin:0; font-size:0.9rem; color:var(--text-muted);">${esc(msg)}</p>
+          <div class="row" style="justify-content:flex-end; margin-top:4px;">
+            <button type="button" id="dlg-cancel" class="btn btn-secondary btn-sm">Cancelar</button>
+            <button type="button" id="dlg-ok" class="btn btn-danger-solid btn-sm">${esc(okText)}</button>
+          </div>
+        `);
+        document.getElementById('dlg-cancel').onclick = closeModal;
+        document.getElementById('dlg-ok').onclick = () => { closeModal(); onOk(); };
+      }
+
+      // ===================================================================
+      // 4. ADMIN PERMISSIONS (PROTECTS MASTER CANTORAL ONLY; LISTS ALWAYS OPEN)
+      // ===================================================================
+      function requireAdmin() {
+        if (state.isAdmin) return true;
+        showToast('Se requiere Modo Administrador (🔒)');
+        return false;
+      }
+
+      function setAdminMode(unlocked) {
+        state.isAdmin = Boolean(unlocked);
+        syncAdminUI();
+        renderSongsList();
+        renderVisor();
+      }
+
+      function syncAdminUI() {
+        const roleBtn = document.getElementById('btn-admin-role');
+        const roleText = document.getElementById('role-btn-text');
+        const brandSub = document.getElementById('brand-role-sub');
+
+        if (state.isAdmin) {
+          roleText.textContent = '🔓 Admin';
+          roleBtn.classList.add('admin-unlocked');
+          roleBtn.title = 'Abrir Panel de Administrador';
+          brandSub.textContent = 'Modo Administrador';
+        } else {
+          roleText.textContent = '🔒 Coro';
+          roleBtn.classList.remove('admin-unlocked');
+          roleBtn.title = 'Ingresar como Administrador';
+          brandSub.textContent = 'Modo Coro';
+        }
+
+        // Cantoral Admin controls
+        document.getElementById('cantoral-admin-banner').classList.toggle('hidden', !state.isAdmin);
+        document.getElementById('cantoral-coro-notice').classList.toggle('hidden', state.isAdmin);
+        document.getElementById('btn-new-song').classList.toggle('hidden', !state.isAdmin);
+        document.getElementById('cantoral-backup-bar').classList.toggle('hidden', !state.isAdmin);
+
+        // Visor Admin edit/delete buttons
+        document.getElementById('btn-visor-edit').classList.toggle('hidden', !state.isAdmin);
+        document.getElementById('btn-visor-del').classList.toggle('hidden', !state.isAdmin);
+      }
+
+      function openAdminLoginModal() {
+        const isDefaultPin = state.adminPin === DEFAULT_ADMIN_PIN;
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">Acceso de Administrador</h3>
+              <p class="section-desc">Ingresa el PIN para editar el Cantoral maestro.</p>
+            </div>
+            <button type="button" id="adm-login-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+          <form id="admin-login-form" style="display:flex; flex-direction:column; gap:11px;">
+            <div>
+              <label class="field-label" for="adm-pin-input">PIN de Administrador</label>
+              <input id="adm-pin-input" type="password" inputmode="numeric" autocomplete="off" class="input" placeholder="Ingresa tu PIN..." required />
+            </div>
+            <p id="adm-login-err" class="hidden" style="margin:0; font-size:0.82rem; color:var(--danger); font-weight:700;"></p>
+            ${isDefaultPin ? `<div class="pin-hint"><strong>PIN inicial:</strong> <code>1234</code>. Puedes cambiarlo dentro del Panel de Administrador.</div>` : ''}
+            <div class="row" style="justify-content:flex-end;">
+              <button type="button" id="adm-login-cancel" class="btn btn-secondary btn-sm">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm">🔓 Desbloquear Admin</button>
+            </div>
+          </form>
+        `);
+        document.getElementById('adm-login-close').onclick = closeModal;
+        document.getElementById('adm-login-cancel').onclick = closeModal;
+        const inp = document.getElementById('adm-pin-input');
+        setTimeout(() => inp.focus(), 60);
+
+        document.getElementById('admin-login-form').onsubmit = e => {
+          e.preventDefault();
+          const errEl = document.getElementById('adm-login-err');
+          if (inp.value.trim() === state.adminPin) {
+            closeModal();
+            setAdminMode(true);
+            showToast('Modo Administrador desbloqueado');
+          } else {
+            errEl.textContent = 'PIN incorrecto. Inténtalo de nuevo.';
+            errEl.classList.remove('hidden');
+            inp.value = '';
+            inp.focus();
+          }
+        };
+      }
+
+      function openAdminPanelModal() {
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">Panel de Administrador</h3>
+              <p class="section-desc">Control del repertorio maestro y respaldos</p>
+            </div>
+            <button type="button" id="adm-panel-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+
+          <div class="grid-2">
+            <div class="admin-stat-box">
+              <div class="admin-stat-num">${state.songs.length}</div>
+              <div class="admin-stat-lbl">Cantos en Cantoral</div>
+            </div>
+            <div class="admin-stat-box">
+              <div class="admin-stat-num">${state.lists.length}</div>
+              <div class="admin-stat-lbl">Listas Guardadas</div>
+            </div>
+          </div>
+
+          <button type="button" id="adm-lock-now" class="btn btn-primary" style="width:100%;">
+            🔒 Bloquear y volver a Modo Coro
+          </button>
+
+          <div class="divider"></div>
+
+          <form id="adm-change-pin-form" style="display:flex; flex-direction:column; gap:9px;">
+            <span class="field-label" style="margin-bottom:0;">Cambiar PIN de Administrador</span>
+            <input id="pin-cur" type="password" inputmode="numeric" class="input" placeholder="PIN actual" required />
+            <div class="grid-2">
+              <input id="pin-new" type="password" inputmode="numeric" class="input" placeholder="Nuevo PIN (mín. 4)" required />
+              <input id="pin-cnf" type="password" inputmode="numeric" class="input" placeholder="Confirmar PIN" required />
+            </div>
+            <p id="pin-change-msg" class="hidden" style="margin:0; font-size:0.8rem; font-weight:700;"></p>
+            <button type="submit" class="btn btn-soft btn-sm" style="align-self:flex-start;">Actualizar PIN</button>
+          </form>
+
+          <div class="divider"></div>
+
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <span class="field-label" style="margin-bottom:0;">Respaldo JSON Completo (Cantos + Listas)</span>
+            <div class="grid-2">
+              <button type="button" id="adm-export-btn" class="btn btn-secondary btn-sm">Exportar (.json)</button>
+              <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+                Importar (.json)
+                <input id="adm-import-input" type="file" accept=".json,application/json" class="hidden" />
+              </label>
+            </div>
+            <button type="button" id="adm-restore-factory" class="btn btn-danger btn-sm" style="width:100%;">
+              Restaurar cantos de fábrica
+            </button>
+          </div>
+        `);
+
+        document.getElementById('adm-panel-close').onclick = closeModal;
+        document.getElementById('adm-lock-now').onclick = () => {
+          closeModal();
+          setAdminMode(false);
+          showToast('Sesión bloqueada • Modo Coro activo');
+        };
+
+        document.getElementById('adm-change-pin-form').onsubmit = e => {
+          e.preventDefault();
+          const cur = document.getElementById('pin-cur').value.trim();
+          const nw = document.getElementById('pin-new').value.trim();
+          const cnf = document.getElementById('pin-cnf').value.trim();
+          const msg = document.getElementById('pin-change-msg');
+          msg.classList.remove('hidden');
+
+          if (cur !== state.adminPin) {
+            msg.style.color = 'var(--danger)'; msg.textContent = 'El PIN actual no coincide.'; return;
+          }
+          if (nw.length < 4) {
+            msg.style.color = 'var(--danger)'; msg.textContent = 'Mínimo 4 caracteres.'; return;
+          }
+          if (nw !== cnf) {
+            msg.style.color = 'var(--danger)'; msg.textContent = 'La confirmación no coincide.'; return;
+          }
+          saveAdminPin(nw);
+          msg.style.color = 'var(--success)';
+          msg.textContent = '¡PIN actualizado correctamente!';
+          document.getElementById('pin-cur').value = '';
+          document.getElementById('pin-new').value = '';
+          document.getElementById('pin-cnf').value = '';
+          showToast('PIN actualizado');
+        };
+
+        document.getElementById('adm-export-btn').onclick = exportBackupJSON;
+        document.getElementById('adm-import-input').onchange = e => {
+          if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            e.target.value = '';
+            closeModal();
+            importBackupJSON(file);
+          }
+        };
+
+        document.getElementById('adm-restore-factory').onclick = () => {
+          confirmDialog(
+            'Restaurar Cantos de Fábrica',
+            'Se restaurarán los 5 cantos litúrgicos originales y las 2 listas de ejemplo.',
+            'Restaurar',
+            () => {
+              state.songs = JSON.parse(JSON.stringify(DEFAULT_SONGS));
+              state.lists = JSON.parse(JSON.stringify(DEFAULT_LISTS));
+              state.activeListId = state.lists[0].id;
+              state.visorSongId = state.songs[0].id;
+              state.visorListId = null;
+              saveSongs();
+              saveLists();
+              renderSongsList();
+              renderListasView();
+              renderVisor();
+              showToast('Repertorio de fábrica restaurado');
+            }
+          );
+        };
+      }
+
+      // ===================================================================
+      // 5. FULLSCREEN, CHORDS & COLUMNS TOGGLES
+      // ===================================================================
+      function setShowChords(val) {
+        state.showChords = Boolean(val);
+        try { localStorage.setItem(STORAGE.SHOW_CHORDS, String(state.showChords)); } catch (e) {}
+        syncVisorToggleUI();
+        renderVisor();
+        if (!document.getElementById('atril-overlay').classList.contains('hidden')) renderAtrilSheet();
+      }
+
+      function setTwoCols(val) {
+        state.twoCols = Boolean(val);
+        try { localStorage.setItem(STORAGE.TWO_COLS, String(state.twoCols)); } catch (e) {}
+        syncVisorToggleUI();
+        renderVisor();
+        if (!document.getElementById('atril-overlay').classList.contains('hidden')) renderAtrilSheet();
+      }
+
+      function syncVisorToggleUI() {
+        document.getElementById('btn-chords-on').classList.toggle('active', state.showChords);
+        document.getElementById('btn-chords-off').classList.toggle('active', !state.showChords);
+        document.getElementById('atril-chords-on').classList.toggle('active-atril', state.showChords);
+        document.getElementById('atril-chords-off').classList.toggle('active-atril', !state.showChords);
+
+        document.getElementById('btn-col-1').classList.toggle('active', !state.twoCols);
+        document.getElementById('btn-col-2').classList.toggle('active', state.twoCols);
+        const aColBtn = document.getElementById('atril-cols-btn');
+        aColBtn.textContent = state.twoCols ? '2 Cols' : '1 Col';
+        aColBtn.classList.toggle('active-atril', state.twoCols);
+
+        const op = state.showChords ? '1' : '0.45';
+        document.getElementById('visor-transpose-box').style.opacity = op;
+        document.getElementById('visor-capo-box').style.opacity = op;
+        document.getElementById('visor-chord-hint').classList.toggle('hidden', !state.showChords);
+      }
+
+      function isNativeFullscreen() {
+        return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      }
+
+      function updateFullscreenUI() {
+        const active = isNativeFullscreen() || state.immersiveFs;
+        document.getElementById('fs-top-symbol').textContent = active ? '✕' : '⛶';
+        document.getElementById('btn-fullscreen-top').title = active ? 'Salir de pantalla completa' : 'Pantalla completa';
+        document.getElementById('btn-atril-fs').textContent = active ? '✕ Salir FS' : '⛶';
+      }
+
+      async function toggleFullscreen() {
+        const docEl = document.documentElement;
+        const reqFn = docEl.requestFullscreen || docEl.webkitRequestFullscreen;
+        const exitFn = document.exitFullscreen || document.webkitExitFullscreen;
+
+        if (isNativeFullscreen()) {
+          try { await exitFn.call(document); } catch (e) {
+            state.immersiveFs = false; document.body.classList.remove('immersive-fs');
+          }
+          updateFullscreenUI();
+          return;
+        }
+        if (state.immersiveFs) {
+          state.immersiveFs = false;
+          document.body.classList.remove('immersive-fs');
+          updateFullscreenUI();
+          return;
+        }
+        if (reqFn) {
+          try { await reqFn.call(docEl); updateFullscreenUI(); return; } catch (e) {}
+        }
+        state.immersiveFs = true;
+        document.body.classList.add('immersive-fs');
+        updateFullscreenUI();
+        showToast('Modo inmersivo activado');
+      }
+
+      // ===================================================================
+      // 6. COLOR & THEME CUSTOMIZER MODAL
+      // ===================================================================
+      function openThemeModal() {
+        const swatchesHtml = LITURGICAL_PALETTES.map(p => {
+          const active = state.theme.primary.toLowerCase() === p.hex.toLowerCase();
+          return `
+            <button type="button" class="swatch-btn ${active ? 'active' : ''}" data-preset-hex="${p.hex}">
+              <span class="swatch-dot" style="background:${p.hex};"></span>
+              <span style="font-size:0.77rem; font-weight:700; line-height:1.2;">${esc(p.name)}</span>
+            </button>
+          `;
+        }).join('');
+
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">🎨 Color y Apariencia</h3>
+              <p class="section-desc">Paletas litúrgicas, color libre y modo claro/oscuro</p>
+            </div>
+            <button type="button" id="theme-close-x" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+
+          <div class="control-box" style="padding:10px 12px;">
+            <div>
+              <div style="font-weight:700; font-size:0.86rem;">Modo de Pantalla</div>
+              <div style="font-size:0.74rem; color:var(--text-muted);">Claro u Oscuro</div>
+            </div>
+            <div class="row" style="gap:6px;">
+              <button type="button" id="btn-mode-light" class="btn btn-sm ${!state.theme.dark ? 'btn-primary' : 'btn-secondary'}">☀️ Claro</button>
+              <button type="button" id="btn-mode-dark" class="btn btn-sm ${state.theme.dark ? 'btn-primary' : 'btn-secondary'}">🌙 Oscuro</button>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label">6 Paletas Litúrgicas</span>
+            <div class="swatch-grid">${swatchesHtml}</div>
+          </div>
+
+          <div class="control-box" style="padding:10px 12px;">
+            <div>
+              <div style="font-weight:700; font-size:0.86rem;">Color Libre</div>
+              <div style="font-size:0.74rem; color:var(--text-muted);">Personaliza al instante</div>
+            </div>
+            <div class="row">
+              <span id="custom-hex-label" style="font-family:monospace; font-size:0.8rem; font-weight:700; color:var(--text-muted);">${esc(state.theme.primary)}</span>
+              <input id="custom-color-picker" type="color" value="${esc(state.theme.primary)}" style="width:42px; height:34px; border:none; background:none; cursor:pointer;" />
+            </div>
+          </div>
+
+          <div class="row" style="justify-content:flex-end;">
+            <button type="button" id="theme-done-btn" class="btn btn-primary btn-sm">Listo</button>
+          </div>
+        `);
+
+        document.getElementById('theme-close-x').onclick = closeModal;
+        document.getElementById('theme-done-btn').onclick = closeModal;
+
+        const refreshMode = () => {
+          document.getElementById('btn-mode-light').className = `btn btn-sm ${!state.theme.dark ? 'btn-primary' : 'btn-secondary'}`;
+          document.getElementById('btn-mode-dark').className = `btn btn-sm ${state.theme.dark ? 'btn-primary' : 'btn-secondary'}`;
+        };
+        document.getElementById('btn-mode-light').onclick = () => { applyTheme(state.theme.primary, false, true); refreshMode(); };
+        document.getElementById('btn-mode-dark').onclick = () => { applyTheme(state.theme.primary, true, true); refreshMode(); };
+
+        const picker = document.getElementById('custom-color-picker');
+        const hexLbl = document.getElementById('custom-hex-label');
+
+        document.querySelectorAll('[data-preset-hex]').forEach(btn => {
+          btn.onclick = () => {
+            const hex = btn.dataset.presetHex;
+            applyTheme(hex, state.theme.dark, true);
+            picker.value = hex;
+            hexLbl.textContent = hex;
+            document.querySelectorAll('[data-preset-hex]').forEach(b => b.classList.toggle('active', b === btn));
+          };
+        });
+
+        picker.oninput = e => {
+          const hex = e.target.value;
+          applyTheme(hex, state.theme.dark, true);
+          hexLbl.textContent = hex;
+          document.querySelectorAll('[data-preset-hex]').forEach(b =>
+            b.classList.toggle('active', b.dataset.presetHex.toLowerCase() === hex.toLowerCase())
+          );
+        };
+      }
+
+      // ===================================================================
+      // 7. NAVIGATION CONTROLLER
+      // ===================================================================
+      function showTab(tabName) {
+        state.activeTab = tabName;
+        ['cantoral', 'visor', 'listas', 'metronomo', 'estudio'].forEach(t => {
+          document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
+        });
+        document.querySelectorAll('.nav-item').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        if (tabName !== 'visor' && state.scrollActive) toggleAutoScroll(false);
+        if (tabName === 'listas') renderListasView();
+        if (tabName === 'visor') renderVisor();
+        if (tabName === 'estudio' && state.activeEstudioSub === 'grabadora') resizeRecCanvas();
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+
+      function showEstudioSub(sub) {
+        state.activeEstudioSub = sub;
+        ['afinador', 'tonos', 'grabadora'].forEach(s => {
+          document.getElementById(`subtab-${s}`).classList.toggle('active', s === sub);
+          document.getElementById(`panel-${s}`).classList.toggle('hidden', s !== sub);
+        });
+        if (sub === 'grabadora') resizeRecCanvas();
+      }
+
+      // ===================================================================
+      // 8. TAB 1: CANTORAL, FILTERS, SONG FORM & BACKUP
+      // ===================================================================
+      function populateCantoralFilters() {
+        document.getElementById('filter-moment').innerHTML = MOMENTS.map(m =>
+          `<option value="${esc(m)}">${esc(m)}</option>`
+        ).join('');
+        document.getElementById('filter-season').innerHTML = SEASONS.map(s =>
+          `<option value="${esc(s)}">${esc(s)}</option>`
+        ).join('');
+      }
+
+      function renderSongsList() {
+        const list = document.getElementById('songs-list');
+        const q = state.searchQuery.trim().toLowerCase();
+
+        const filtered = state.songs.filter(s => {
+          const mOk = state.filterMoment === 'Todos' || s.moment === state.filterMoment;
+          const tOk = state.filterSeason === 'Todos' || s.season === state.filterSeason;
+          const qOk = !q ||
+            s.title.toLowerCase().includes(q) ||
+            s.lyrics.toLowerCase().includes(q) ||
+            s.key.toLowerCase().includes(q) ||
+            s.moment.toLowerCase().includes(q) ||
+            (s.season || '').toLowerCase().includes(q);
+          return mOk && tOk && qOk;
+        });
+
+        document.getElementById('songs-count-txt').textContent =
+          `${filtered.length} ${filtered.length === 1 ? 'canto' : 'cantos'}`;
+
+        if (filtered.length === 0) {
+          list.innerHTML = `<div class="empty-state">No se encontraron cantos con esos filtros.</div>`;
+          return;
+        }
+
+        list.innerHTML = filtered.map(s => {
+          const hasAudio = Boolean(s.audioUrl || state.sessionAudioMap[s.id]);
+          const editBtns = state.isAdmin ? `
+            <button type="button" class="mini-icon-btn" data-edit-song="${s.id}" title="Editar canto">✏️</button>
+            <button type="button" class="mini-icon-btn danger" data-del-song="${s.id}" title="Eliminar canto">🗑️</button>
+          ` : '';
+
+          return `
+            <div class="song-card">
+              <button type="button" class="song-card-main" data-open-song="${s.id}">
+                <div class="song-card-meta">
+                  <span class="badge">${esc(s.moment)}</span>
+                  <span class="badge-neutral">${esc(s.season || 'Ordinario')}</span>
+                  <span>Tono <strong>${esc(s.key)}</strong></span>
+                  ${s.bpm ? `<span>• ${s.bpm} BPM</span>` : ''}
+                  ${hasAudio ? `<span>• 🎧</span>` : ''}
+                </div>
+                <div class="song-card-title">${esc(s.title)}</div>
+              </button>
+              <div class="song-card-actions">
+                <button type="button" class="mini-icon-btn" data-add-to-list="${s.id}" title="Agregar a un listado">📋</button>
+                ${editBtns}
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        list.querySelectorAll('[data-open-song]').forEach(btn => {
+          btn.onclick = () => openVisor(btn.dataset.openSong, null, 0);
+        });
+
+        // Adding a song to any list is always available
+        list.querySelectorAll('[data-add-to-list]').forEach(btn => {
+          btn.onclick = () => openQuickAddToListModal(btn.dataset.addToList);
+        });
+
+        if (state.isAdmin) {
+          list.querySelectorAll('[data-edit-song]').forEach(btn => {
+            btn.onclick = () => openSongFormModal(btn.dataset.editSong);
+          });
+          list.querySelectorAll('[data-del-song]').forEach(btn => {
+            btn.onclick = () => deleteSongWithConfirm(btn.dataset.delSong);
+          });
+        }
+      }
+
+      function openQuickAddToListModal(songId) {
+        const song = state.songs.find(s => s.id === songId);
+        if (!song) return;
+        if (state.lists.length === 0) {
+          showToast('Primero crea un listado en la pestaña Listas');
+          showTab('listas');
+          openListMetaModal(null);
+          return;
+        }
+
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">Agregar a un Listado</h3>
+              <p class="section-desc">${esc(song.title)} (${esc(song.key)})</p>
+            </div>
+            <button type="button" id="qal-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${state.lists.map(l => {
+              const count = l.songIds.filter(id => id === songId).length;
+              return `
+                <button type="button" class="picker-item" data-pick-list="${l.id}" style="justify-content:space-between; width:100%;">
+                  <div style="text-align:left;">
+                    <div style="font-weight:700; font-size:0.9rem;">${esc(l.name)}</div>
+                    <div style="font-size:0.74rem; color:var(--text-muted);">${l.songIds.length} cantos${l.date ? ` • ${esc(l.date)}` : ''}</div>
+                  </div>
+                  <span class="badge">${count > 0 ? `En lista (${count})` : '+ Agregar'}</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        `);
+
+        document.getElementById('qal-close').onclick = closeModal;
+        document.querySelectorAll('[data-pick-list]').forEach(btn => {
+          btn.onclick = () => {
+            const list = state.lists.find(x => x.id === btn.dataset.pickList);
+            if (!list) return;
+            list.songIds.push(songId);
+            saveLists();
+            closeModal();
+            showToast(`"${song.title}" agregado a "${list.name}"`);
+          };
+        });
+      }
+
+      function deleteSongWithConfirm(songId) {
+        if (!requireAdmin()) return;
+        const s = state.songs.find(x => x.id === songId);
+        if (!s) return;
+        confirmDialog('Eliminar Canto', `¿Deseas eliminar "${s.title}" del cantoral y de los listados?`, 'Eliminar', () => {
+          state.songs = state.songs.filter(x => x.id !== s.id);
+          state.lists.forEach(l => { l.songIds = l.songIds.filter(id => id !== s.id); });
+          if (state.visorSongId === s.id) state.visorSongId = state.songs[0] ? state.songs[0].id : null;
+          saveSongs();
+          saveLists();
+          renderSongsList();
+          renderListasView();
+          renderVisor();
+          showToast('Canto eliminado');
+        });
+      }
+
+      function openSongFormModal(songId = null) {
+        if (!requireAdmin()) return;
+        const song = songId ? state.songs.find(s => s.id === songId) : null;
+        const isEdit = Boolean(song);
+
+        const momentOpts = MOMENTS.filter(m => m !== 'Todos')
+          .map(m => `<option value="${esc(m)}" ${song && song.moment === m ? 'selected' : ''}>${esc(m)}</option>`).join('');
+        const seasonOpts = SEASONS.filter(s => s !== 'Todos')
+          .map(s => `<option value="${esc(s)}" ${song && song.season === s ? 'selected' : ''}>${esc(s)}</option>`).join('');
+
+        const currentKey = song ? song.key : 'D';
+        const keyList = INITIAL_KEYS.includes(currentKey) ? INITIAL_KEYS : [currentKey, ...INITIAL_KEYS];
+        const keyOpts = keyList
+          .map(k => `<option value="${esc(k)}" ${k === currentKey ? 'selected' : ''}>${esc(k)}</option>`).join('');
+
+        let pendingLocalFile = null;
+
+        openModal(`
+          <div class="row-between">
+            <h3 class="section-title">${isEdit ? 'Editar Canto' : 'Nuevo Canto'}</h3>
+            <button type="button" id="sf-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+          <form id="song-form" style="display:flex; flex-direction:column; gap:10px;">
+            <div>
+              <label class="field-label" for="sf-title">Título *</label>
+              <input id="sf-title" class="input" type="text" required value="${esc(song ? song.title : '')}" placeholder="Ej: Pescador de Hombres" />
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label class="field-label" for="sf-moment">Momento Litúrgico</label>
+                <select id="sf-moment" class="select">${momentOpts}</select>
+              </div>
+              <div>
+                <label class="field-label" for="sf-season">Tiempo Litúrgico</label>
+                <select id="sf-season" class="select">${seasonOpts}</select>
+              </div>
+            </div>
+
+            <div class="grid-2">
+              <div>
+                <label class="field-label" for="sf-key">Tonalidad</label>
+                <select id="sf-key" class="select">${keyOpts}</select>
+              </div>
+              <div>
+                <label class="field-label" for="sf-bpm">BPM</label>
+                <input id="sf-bpm" class="input" type="number" min="40" max="220" value="${song && song.bpm ? song.bpm : 80}" />
+              </div>
+            </div>
+
+            <div>
+              <label class="field-label" for="sf-notes">Indicaciones de dirección (opcional)</label>
+              <textarea id="sf-notes" class="input" rows="2" placeholder="Ej: Solo voces femeninas en estrofa 2; bajar volumen en el coro...">${esc(song ? song.notes : '')}</textarea>
+            </div>
+
+            <div style="background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:7px;">
+              <label class="field-label" for="sf-audio-url" style="margin:0;">🎧 Audio de referencia (URL o archivo local)</label>
+              <input id="sf-audio-url" class="input" type="url" value="${esc(song && song.audioUrl && !song.audioUrl.startsWith('data:') ? song.audioUrl : '')}" placeholder="https://ejemplo.com/ensayo.mp3" style="background:var(--surface);" />
+              <div class="row-between" style="flex-wrap:wrap; gap:6px;">
+                <label class="btn btn-soft btn-sm" style="cursor:pointer;">
+                  📁 Cargar archivo local
+                  <input id="sf-audio-file" type="file" accept="audio/*" class="hidden" />
+                </label>
+                <span id="sf-audio-status" style="font-size:0.74rem; color:var(--text-muted);">
+                  ${song && song.audioName ? `Cargado: ${esc(song.audioName)}` : 'Sin archivo local'}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label class="field-label" for="sf-lyrics">Letra con acordes entre corchetes *</label>
+              <div class="chord-quick-bar">
+                ${QUICK_CHORD_BTNS.map((c, idx) => `<button type="button" class="chord-chip" data-qidx="${idx}">${c.label}</button>`).join('')}
+              </div>
+              <textarea id="sf-lyrics" class="textarea" rows="8" required placeholder="[CORO]&#10;[D]Altar de paz, [G]mesa del Se[A7]ñor...">${esc(song ? song.lyrics : '')}</textarea>
+            </div>
+
+            <div class="row" style="justify-content:flex-end; margin-top:4px;">
+              <button type="button" id="sf-cancel" class="btn btn-secondary btn-sm">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm">${isEdit ? 'Guardar Cambios' : 'Guardar Canto'}</button>
+            </div>
+          </form>
+        `);
+
+        document.getElementById('sf-close').onclick = closeModal;
+        document.getElementById('sf-cancel').onclick = closeModal;
+
+        document.getElementById('sf-audio-file').onchange = e => {
+          const f = e.target.files && e.target.files[0];
+          if (f) {
+            pendingLocalFile = f;
+            document.getElementById('sf-audio-status').textContent = `Seleccionado: ${f.name}`;
+          }
+        };
+
+        const ta = document.getElementById('sf-lyrics');
+        document.querySelectorAll('.chord-chip').forEach(btn => {
+          btn.onclick = () => {
+            const item = QUICK_CHORD_BTNS[parseInt(btn.dataset.qidx, 10)];
+            const start = ta.selectionStart;
+            const end = ta.selectionEnd;
+
+            // Smart modifier insertion: [m] or [7] appends inside previous chord bracket if cursor is right after ']'
+            if (item.mod) {
+              const before = ta.value.slice(0, start);
+              if (before.endsWith(']')) {
+                ta.value = before.slice(0, -1) + item.mod + ']' + ta.value.slice(end);
+                ta.focus();
+                ta.selectionStart = ta.selectionEnd = start + item.mod.length;
+                return;
+              }
+              const ins = `[${item.mod}]`;
+              ta.value = ta.value.slice(0, start) + ins + ta.value.slice(end);
+              ta.focus();
+              ta.selectionStart = ta.selectionEnd = start + ins.length;
+              return;
+            }
+
+            ta.value = ta.value.slice(0, start) + item.val + ta.value.slice(end);
+            ta.focus();
+            ta.selectionStart = ta.selectionEnd = start + item.val.length;
+          };
+        });
+
+        document.getElementById('song-form').onsubmit = e => {
+          e.preventDefault();
+          if (!requireAdmin()) return;
+          const title = document.getElementById('sf-title').value.trim();
+          if (!title) return;
+
+          const data = {
+            title,
+            moment: document.getElementById('sf-moment').value,
+            season: document.getElementById('sf-season').value,
+            key: document.getElementById('sf-key').value || 'C',
+            bpm: parseInt(document.getElementById('sf-bpm').value, 10) || 80,
+            notes: document.getElementById('sf-notes').value.trim(),
+            lyrics: document.getElementById('sf-lyrics').value,
+            audioUrl: document.getElementById('sf-audio-url').value.trim(),
+            audioName: song ? (song.audioName || '') : ''
+          };
+
+          let targetSong;
+          if (isEdit) {
+            Object.assign(song, data);
+            targetSong = song;
+            showToast('Canto actualizado');
+          } else {
+            targetSong = { id: 'song-' + Date.now(), ...data };
+            state.songs.unshift(targetSong);
+            if (!state.visorSongId) state.visorSongId = targetSong.id;
+            showToast('Nuevo canto guardado');
+          }
+
+          if (pendingLocalFile) {
+            const objUrl = URL.createObjectURL(pendingLocalFile);
+            state.sessionAudioMap[targetSong.id] = objUrl;
+            targetSong.audioName = pendingLocalFile.name;
+            if (pendingLocalFile.size <= 1200000) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                targetSong.audioUrl = reader.result;
+                saveSongs();
+                if (state.activeTab === 'visor') renderVisor();
+              };
+              reader.readAsDataURL(pendingLocalFile);
+            }
+          }
+
+          saveSongs();
+          closeModal();
+          renderSongsList();
+          if (state.activeTab === 'visor') renderVisor();
+        };
+      }
+
+      function exportBackupJSON() {
+        if (!requireAdmin()) return;
+        const payload = {
+          app: 'Coro Litúrgico Studio',
+          version: 6,
+          exportedAt: new Date().toISOString(),
+          songs: state.songs,
+          lists: state.lists
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coro-studio-respaldo-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Respaldo JSON exportado');
+      }
+
+      function importBackupJSON(file) {
+        if (!requireAdmin()) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            const impSongs = Array.isArray(parsed) ? parsed : parsed.songs;
+            if (!Array.isArray(impSongs) || impSongs.length === 0) throw new Error('Sin cantos');
+            confirmDialog(
+              'Importar Respaldo JSON',
+              `Se cargarán ${impSongs.length} cantos${Array.isArray(parsed.lists) ? ` y ${parsed.lists.length} listados` : ''}.`,
+              'Importar',
+              () => {
+                state.songs = impSongs.map(s => ({
+                  season: 'Ordinario', notes: '', audioUrl: '', audioName: '', ...s
+                }));
+                if (Array.isArray(parsed.lists) && parsed.lists.length > 0) {
+                  state.lists = parsed.lists;
+                }
+                state.activeListId = state.lists[0] ? state.lists[0].id : null;
+                state.visorSongId = state.songs[0] ? state.songs[0].id : null;
+                saveSongs();
+                saveLists();
+                renderSongsList();
+                renderListasView();
+                renderVisor();
+                showToast('Respaldo importado con éxito');
+              }
+            );
+          } catch (e) {
+            showToast('Archivo JSON inválido');
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      // ===================================================================
+      // 9. TAB 3: LISTAS (ALWAYS VISIBLE & READY TO USE)
+      // ===================================================================
+      function updateListasNavBadge() {
+        const badge = document.getElementById('listas-nav-badge');
+        if (state.lists.length > 0) {
+          badge.textContent = state.lists.length;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+
+      function getActiveList() {
+        return state.lists.find(l => l.id === state.activeListId) || state.lists[0] || null;
+      }
+
+      function renderListasView() {
+        const tabsBar = document.getElementById('lists-tabs-bar');
+        const panel = document.getElementById('active-list-panel');
+        const songsBox = document.getElementById('active-list-songs');
+
+        if (state.lists.length === 0) {
+          tabsBar.innerHTML = '';
+          panel.classList.add('hidden');
+          songsBox.innerHTML = `<div class="empty-state">No tienes listados todavía. Toca el botón <strong>+ Nuevo Listado</strong> arriba para crear el primero.</div>`;
+          return;
+        }
+
+        const active = getActiveList();
+        state.activeListId = active.id;
+        panel.classList.remove('hidden');
+
+        // Render horizontal selector cards for all saved lists
+        tabsBar.innerHTML = state.lists.map(l => `
+          <button type="button" class="list-tab-card ${l.id === active.id ? 'active' : ''}" data-select-list="${l.id}">
+            <div class="list-tab-title">${esc(l.name)}</div>
+            <div class="list-tab-sub">${l.songIds.length} ${l.songIds.length === 1 ? 'canto' : 'cantos'}${l.date ? ` • ${esc(l.date)}` : ''}</div>
+          </button>
+        `).join('');
+
+        tabsBar.querySelectorAll('[data-select-list]').forEach(btn => {
+          btn.onclick = () => {
+            state.activeListId = btn.dataset.selectList;
+            renderListasView();
+          };
+        });
+
+        // Active list header info
+        document.getElementById('al-title').textContent = active.name;
+        const dateEl = document.getElementById('al-date-desc');
+        if (active.date) {
+          dateEl.textContent = active.date;
+          dateEl.classList.remove('hidden');
+        } else {
+          dateEl.textContent = '';
+          dateEl.classList.add('hidden');
+        }
+        document.getElementById('al-count-desc').textContent =
+          `${active.songIds.length} ${active.songIds.length === 1 ? 'canto seleccionado' : 'cantos seleccionados'}`;
+
+        if (active.songIds.length === 0) {
+          songsBox.innerHTML = `<div class="empty-state">Este listado aún no tiene cantos.<br/>Toca <strong>+ Seleccionar cantos</strong> para elegir los cantos del cantoral.</div>`;
+          return;
+        }
+
+        // Render numbered songs in active list with ↑, ↓, 📖 Ver, ✕
+        songsBox.innerHTML = active.songIds.map((sid, idx) => {
+          const s = state.songs.find(x => x.id === sid);
+          if (!s) return '';
+          return `
+            <div class="song-card">
+              <div class="song-card-main">
+                <div class="song-card-meta">
+                  <span class="badge">${idx + 1}. ${esc(s.moment)}</span>
+                  <span>Tono <strong>${esc(s.key)}</strong></span>
+                  ${s.bpm ? `<span>• ${s.bpm} BPM</span>` : ''}
+                </div>
+                <div class="song-card-title">${esc(s.title)}</div>
+              </div>
+              <div class="song-card-actions">
+                <button type="button" class="mini-icon-btn" data-lmove="${idx}|-1" ${idx === 0 ? 'disabled' : ''} title="Subir">↑</button>
+                <button type="button" class="mini-icon-btn" data-lmove="${idx}|1" ${idx === active.songIds.length - 1 ? 'disabled' : ''} title="Bajar">↓</button>
+                <button type="button" class="btn btn-soft btn-sm" data-lver="${idx}" title="Abrir en Visor">📖 Ver</button>
+                <button type="button" class="mini-icon-btn danger" data-lrm="${idx}" title="Quitar del listado">✕</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        songsBox.querySelectorAll('[data-lver]').forEach(btn => {
+          btn.onclick = () => {
+            const idx = parseInt(btn.dataset.lver, 10);
+            openVisor(active.songIds[idx], active.id, idx);
+          };
+        });
+
+        songsBox.querySelectorAll('[data-lmove]').forEach(btn => {
+          btn.onclick = () => {
+            const [idx, dir] = btn.dataset.lmove.split('|').map(Number);
+            const target = idx + dir;
+            if (target < 0 || target >= active.songIds.length) return;
+            const tmp = active.songIds[idx];
+            active.songIds[idx] = active.songIds[target];
+            active.songIds[target] = tmp;
+            saveLists();
+            renderListasView();
+          };
+        });
+
+        songsBox.querySelectorAll('[data-lrm]').forEach(btn => {
+          btn.onclick = () => {
+            active.songIds.splice(parseInt(btn.dataset.lrm, 10), 1);
+            saveLists();
+            renderListasView();
+            showToast('Canto quitado del listado');
+          };
+        });
+      }
+
+      // Create or Rename List Modal (ALWAYS accessible)
+      function openListMetaModal(listToEdit = null) {
+        const isEdit = Boolean(listToEdit);
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">${isEdit ? '✏️ Renombrar Listado' : '📋 Nuevo Listado'}</h3>
+              <p class="section-desc">${isEdit ? 'Actualiza el nombre o la fecha de tu listado.' : 'Asigna un nombre para organizar tus cantos seleccionados.'}</p>
+            </div>
+            <button type="button" id="lm-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+          <form id="list-meta-form" style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <label class="field-label" for="lm-name">Nombre del listado *</label>
+              <input id="lm-name" class="input" type="text" required value="${esc(listToEdit ? listToEdit.name : '')}" placeholder="Ej: Misa Dominical, Hora Santa, Ensayo Jueves" />
+            </div>
+            <div>
+              <label class="field-label" for="lm-date">Fecha o Celebración (opcional)</label>
+              <input id="lm-date" class="input" type="text" value="${esc(listToEdit ? listToEdit.date : '')}" placeholder="Ej: Domingo 22 Nov - Cristo Rey" />
+            </div>
+            <div class="row" style="justify-content:flex-end; margin-top:4px;">
+              <button type="button" id="lm-cancel" class="btn btn-secondary btn-sm">Cancelar</button>
+              <button type="submit" class="btn btn-primary btn-sm">${isEdit ? 'Guardar cambios' : 'Crear listado'}</button>
+            </div>
+          </form>
+        `);
+
+        document.getElementById('lm-close').onclick = closeModal;
+        document.getElementById('lm-cancel').onclick = closeModal;
+        const nameInp = document.getElementById('lm-name');
+        setTimeout(() => nameInp.focus(), 60);
+
+        document.getElementById('list-meta-form').onsubmit = e => {
+          e.preventDefault();
+          const name = nameInp.value.trim();
+          const date = document.getElementById('lm-date').value.trim();
+          if (!name) return;
+
+          if (isEdit) {
+            listToEdit.name = name;
+            listToEdit.date = date;
+            saveLists();
+            closeModal();
+            renderListasView();
+            showToast('Listado actualizado');
+          } else {
+            const newList = {
+              id: 'list-' + Date.now(),
+              name,
+              date,
+              songIds: []
+            };
+            state.lists.push(newList);
+            state.activeListId = newList.id;
+            saveLists();
+            closeModal();
+            renderListasView();
+            showToast(`Listado "${name}" creado`);
+          }
+        };
+      }
+
+      // Interactive Multi-Select Song Picker Modal (ALWAYS accessible)
+      function openSongPickerModal() {
+        const active = getActiveList();
+        if (!active) return;
+
+        const selected = [...active.songIds];
+
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title">+ Seleccionar Cantos</h3>
+              <p class="section-desc">Listado: <strong>${esc(active.name)}</strong></p>
+            </div>
+            <button type="button" id="pk-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+
+          <input id="pk-search" type="search" class="input" placeholder="Buscar por título o letra..." />
+          <div>
+            <label class="field-label" for="pk-moment">Filtrar por Momento Litúrgico</label>
+            <select id="pk-moment" class="select">${MOMENTS.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('')}</select>
+          </div>
+
+          <div id="pk-list" style="display:flex; flex-direction:column; gap:7px; max-height:44vh; overflow-y:auto; padding-right:2px;"></div>
+
+          <div class="row-between" style="padding-top:8px; border-top:1px solid var(--border); flex-wrap:wrap; gap:8px;">
+            <button type="button" id="pk-cancel" class="btn btn-secondary btn-sm">Cancelar</button>
+            <button type="button" id="pk-save" class="btn btn-primary btn-sm">Guardar selección (${selected.length} cantos)</button>
+          </div>
+        `);
+
+        const updateSaveBtn = () => {
+          document.getElementById('pk-save').textContent =
+            `Guardar selección (${selected.length} ${selected.length === 1 ? 'canto' : 'cantos'})`;
+        };
+
+        const renderPickerItems = () => {
+          const q = document.getElementById('pk-search').value.trim().toLowerCase();
+          const m = document.getElementById('pk-moment').value;
+
+          const items = state.songs.filter(s => {
+            const mOk = m === 'Todos' || s.moment === m;
+            const qOk = !q || s.title.toLowerCase().includes(q) || s.lyrics.toLowerCase().includes(q);
+            return mOk && qOk;
+          });
+
+          const box = document.getElementById('pk-list');
+          if (items.length === 0) {
+            box.innerHTML = `<div class="empty-state" style="padding:16px;">No hay cantos que coincidan.</div>`;
+            return;
+          }
+
+          box.innerHTML = items.map(s => {
+            const isChecked = selected.includes(s.id);
+            return `
+              <label class="picker-item ${isChecked ? 'checked' : ''}">
+                <input type="checkbox" data-pk-id="${s.id}" ${isChecked ? 'checked' : ''} />
+                <div style="flex:1; min-width:0;">
+                  <div style="font-weight:700; font-size:0.89rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(s.title)}</div>
+                  <div style="font-size:0.73rem; color:var(--text-muted);">${esc(s.moment)} • ${esc(s.season || 'Ordinario')} • Tono ${esc(s.key)}</div>
+                </div>
+              </label>
+            `;
+          }).join('');
+
+          box.querySelectorAll('[data-pk-id]').forEach(cb => {
+            cb.onchange = () => {
+              const id = cb.dataset.pkId;
+              if (cb.checked) {
+                if (!selected.includes(id)) selected.push(id);
+              } else {
+                const idx = selected.indexOf(id);
+                if (idx !== -1) selected.splice(idx, 1);
+              }
+              cb.closest('.picker-item').classList.toggle('checked', cb.checked);
+              updateSaveBtn();
+            };
+          });
+        };
+
+        document.getElementById('pk-search').oninput = renderPickerItems;
+        document.getElementById('pk-moment').onchange = renderPickerItems;
+        document.getElementById('pk-close').onclick = closeModal;
+        document.getElementById('pk-cancel').onclick = closeModal;
+        document.getElementById('pk-save').onclick = () => {
+          active.songIds = [...selected];
+          saveLists();
+          closeModal();
+          renderListasView();
+          showToast(`Selección guardada (${selected.length} cantos)`);
+        };
+
+        renderPickerItems();
+      }
+
+      function shareListWhatsApp() {
+        const active = getActiveList();
+        if (!active || active.songIds.length === 0) {
+          showToast('El listado está vacío');
+          return;
+        }
+        let text = `🎼 *${active.name}*\n`;
+        if (active.date) text += `📅 ${active.date}\n`;
+        text += `\n`;
+        active.songIds.forEach((sid, idx) => {
+          const s = state.songs.find(x => x.id === sid);
+          if (!s) return;
+          text += `${idx + 1}. *${s.moment}:* ${s.title} — Tono *${s.key}*${s.bpm ? ` (${s.bpm} BPM)` : ''}\n`;
+        });
+        text += `\n_Coro Litúrgico Studio_`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      }
+
+      function printActiveList() {
+        const active = getActiveList();
+        if (!active || active.songIds.length === 0) {
+          showToast('El listado está vacío');
+          return;
+        }
+        const rows = active.songIds.map((sid, idx) => {
+          const s = state.songs.find(x => x.id === sid);
+          if (!s) return '';
+          return `
+            <tr>
+              <td><strong>${idx + 1}</strong></td>
+              <td>${esc(s.moment)}</td>
+              <td><strong>${esc(s.title)}</strong></td>
+              <td>${esc(s.key)}</td>
+              <td>${s.bpm ? s.bpm + ' BPM' : '-'}</td>
+            </tr>
+          `;
+        }).join('');
+
+        const pSheet = document.getElementById('print-sheet');
+        pSheet.className = '';
+        pSheet.innerHTML = `
+          <h1>${esc(active.name)}</h1>
+          <div class="p-meta">${active.date ? esc(active.date) + '  |  ' : ''}${active.songIds.length} cantos</div>
+          <table class="p-list-table">
+            <thead>
+              <tr><th>#</th><th>Momento</th><th>Canto</th><th>Tono</th><th>BPM</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+        window.print();
+      }
+
+      // ===================================================================
+      // 10. CHORD ENGINE, GUITAR SVG & PIANO SVG DIAGRAMS
+      // ===================================================================
+      function transposeNote(note, steps) {
+        const norm = FLAT_MAP[note] || note;
+        const idx = CHROMATIC_SHARP.indexOf(norm);
+        if (idx === -1) return note;
+        return CHROMATIC_SHARP[(idx + steps % 12 + 12) % 12];
+      }
+
+      function transposeChord(chord, steps) {
+        if (!steps) return chord;
+        return chord.replace(/^([A-G][#b]?)([^/]*)(\/([A-G][#b]?))?$/, (_, root, suffix, _sl, bass) => {
+          const r = transposeNote(root, steps);
+          const b = bass ? '/' + transposeNote(bass, steps) : '';
+          return r + (suffix || '') + b;
+        });
+      }
+
+      const OPEN_GUITAR_VOICINGS = {
+        'C':    { frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
+        'Cm':   { frets: [-1, 3, 5, 5, 4, 3], fingers: [0, 1, 3, 4, 2, 1], barre: { fret: 3, from: 1, to: 5 } },
+        'C7':   { frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] },
+        'Cmaj7':{ frets: [-1, 3, 2, 0, 0, 0], fingers: [0, 3, 2, 0, 0, 0] },
+        'Cm7':  { frets: [-1, 3, 5, 3, 4, 3], fingers: [0, 1, 3, 1, 2, 1], barre: { fret: 3, from: 1, to: 5 } },
+        'Csus4':{ frets: [-1, 3, 3, 0, 1, 1], fingers: [0, 3, 4, 0, 1, 1] },
+        'Csus2':{ frets: [-1, 3, 0, 0, 1, 3], fingers: [0, 2, 0, 0, 1, 4] },
+        'D':    { frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
+        'Dm':   { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] },
+        'D7':   { frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3] },
+        'Dmaj7':{ frets: [-1, -1, 0, 2, 2, 2], fingers: [0, 0, 0, 1, 2, 3] },
+        'Dm7':  { frets: [-1, -1, 0, 2, 1, 1], fingers: [0, 0, 0, 2, 1, 1] },
+        'Dsus4':{ frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 2, 3] },
+        'Dsus2':{ frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 3, 0] },
+        'E':    { frets: [0, 2, 2, 1, 0, 0], fingers: [0, 2, 3, 1, 0, 0] },
+        'Em':   { frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
+        'E7':   { frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] },
+        'Emaj7':{ frets: [0, 2, 1, 1, 0, 0], fingers: [0, 3, 1, 2, 0, 0] },
+        'Em7':  { frets: [0, 2, 0, 0, 0, 0], fingers: [0, 2, 0, 0, 0, 0] },
+        'Esus4':{ frets: [0, 2, 2, 2, 0, 0], fingers: [0, 2, 3, 4, 0, 0] },
+        'F':    { frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1], barre: { fret: 1, from: 0, to: 5 } },
+        'Fm':   { frets: [1, 3, 3, 1, 1, 1], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 1, from: 0, to: 5 } },
+        'F7':   { frets: [1, 3, 1, 2, 1, 1], fingers: [1, 3, 1, 2, 1, 1], barre: { fret: 1, from: 0, to: 5 } },
+        'Fmaj7':{ frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0] },
+        'Fm7':  { frets: [1, 3, 1, 1, 1, 1], fingers: [1, 3, 1, 1, 1, 1], barre: { fret: 1, from: 0, to: 5 } },
+        'G':    { frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3] },
+        'Gm':   { frets: [3, 5, 5, 3, 3, 3], fingers: [1, 3, 4, 1, 1, 1], barre: { fret: 3, from: 0, to: 5 } },
+        'G7':   { frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] },
+        'Gmaj7':{ frets: [3, 2, 0, 0, 0, 2], fingers: [2, 1, 0, 0, 0, 3] },
+        'Gm7':  { frets: [3, 5, 3, 3, 3, 3], fingers: [1, 3, 1, 1, 1, 1], barre: { fret: 3, from: 0, to: 5 } },
+        'A':    { frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] },
+        'Am':   { frets: [-1, 0, 2, 2, 1, 0], fingers: [0, 0, 2, 3, 1, 0] },
+        'A7':   { frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] },
+        'Amaj7':{ frets: [-1, 0, 2, 1, 2, 0], fingers: [0, 0, 2, 1, 3, 0] },
+        'Am7':  { frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] },
+        'Asus4':{ frets: [-1, 0, 2, 2, 3, 0], fingers: [0, 0, 1, 2, 3, 0] },
+        'Asus2':{ frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0] },
+        'B':    { frets: [-1, 2, 4, 4, 4, 2], fingers: [0, 1, 2, 3, 4, 1], barre: { fret: 2, from: 1, to: 5 } },
+        'Bm':   { frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1], barre: { fret: 2, from: 1, to: 5 } },
+        'B7':   { frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4] },
+        'Bm7':  { frets: [-1, 2, 4, 2, 3, 2], fingers: [0, 1, 3, 1, 2, 1], barre: { fret: 2, from: 1, to: 5 } }
+      };
+
+      function parseChordInfo(chordStr) {
+        const m = chordStr.trim().match(/^([A-G][#b]?)([^/]*)(?:\/([A-G][#b]?))?$/);
+        if (!m) return null;
+        const rootRaw = m[1];
+        const qualRaw = (m[2] || '').trim();
+        const bassRaw = m[3] || '';
+
+        const rootNorm = FLAT_MAP[rootRaw] || rootRaw;
+        const rootIdx = CHROMATIC_SHARP.indexOf(rootNorm);
+        if (rootIdx === -1) return null;
+
+        let quality = '';
+        let intervals = [0, 4, 7];
+        if (/^(m7|min7)$/.test(qualRaw)) { quality = 'm7'; intervals = [0, 3, 7, 10]; }
+        else if (/^(maj7|M7)$/.test(qualRaw)) { quality = 'maj7'; intervals = [0, 4, 7, 11]; }
+        else if (/^(m|min)$/.test(qualRaw)) { quality = 'm'; intervals = [0, 3, 7]; }
+        else if (/^7$/.test(qualRaw)) { quality = '7'; intervals = [0, 4, 7, 10]; }
+        else if (/^sus4$/.test(qualRaw)) { quality = 'sus4'; intervals = [0, 5, 7]; }
+        else if (/^sus2$/.test(qualRaw)) { quality = 'sus2'; intervals = [0, 2, 7]; }
+        else if (/^dim/.test(qualRaw)) { quality = 'dim'; intervals = [0, 3, 6]; }
+        else if (/^aug|\+/.test(qualRaw)) { quality = 'aug'; intervals = [0, 4, 8]; }
+        else if (/^add9/.test(qualRaw)) { quality = ''; intervals = [0, 4, 7, 14]; }
+
+        const noteIndices = intervals.map(iv => (rootIdx + iv) % 12);
+        const bassNorm = bassRaw ? (FLAT_MAP[bassRaw] || bassRaw) : '';
+        const bassIdx = bassNorm ? CHROMATIC_SHARP.indexOf(bassNorm) : -1;
+
+        return { name: chordStr.trim(), rootNorm, rootIdx, quality, intervals, noteIndices, bassIdx };
+      }
+
+      function getGuitarVoicing(info) {
+        const lookupKey = info.rootNorm + info.quality;
+        if (OPEN_GUITAR_VOICINGS[lookupKey]) return OPEN_GUITAR_VOICINGS[lookupKey];
+
+        const eFret = (info.rootIdx - 4 + 12) % 12;
+        const aFret = (info.rootIdx - 9 + 12) % 12;
+        const useA = aFret >= 1 && aFret <= 7 && (eFret === 0 || aFret < eFret);
+
+        if (useA) {
+          const f = aFret;
+          const shapes = {
+            '':     { frets: [-1, f, f+2, f+2, f+2, f], fingers: [0,1,2,3,4,1], barre: { fret: f, from: 1, to: 5 } },
+            'm':    { frets: [-1, f, f+2, f+2, f+1, f], fingers: [0,1,3,4,2,1], barre: { fret: f, from: 1, to: 5 } },
+            '7':    { frets: [-1, f, f+2, f,   f+2, f], fingers: [0,1,3,1,4,1], barre: { fret: f, from: 1, to: 5 } },
+            'maj7': { frets: [-1, f, f+2, f+1, f+2, f], fingers: [0,1,3,2,4,1], barre: { fret: f, from: 1, to: 5 } },
+            'm7':   { frets: [-1, f, f+2, f,   f+1, f], fingers: [0,1,3,1,2,1], barre: { fret: f, from: 1, to: 5 } }
+          };
+          return shapes[info.quality] || shapes[''];
+        } else {
+          const f = eFret || 12;
+          const shapes = {
+            '':     { frets: [f, f+2, f+2, f+1, f, f], fingers: [1,3,4,2,1,1], barre: { fret: f, from: 0, to: 5 } },
+            'm':    { frets: [f, f+2, f+2, f,   f, f], fingers: [1,3,4,1,1,1], barre: { fret: f, from: 0, to: 5 } },
+            '7':    { frets: [f, f+2, f,   f+1, f, f], fingers: [1,3,1,2,1,1], barre: { fret: f, from: 0, to: 5 } },
+            'maj7': { frets: [f, f+2, f+1, f+1, f, f], fingers: [1,4,2,3,1,1], barre: { fret: f, from: 0, to: 5 } },
+            'm7':   { frets: [f, f+2, f,   f,   f, f], fingers: [1,3,1,1,1,1], barre: { fret: f, from: 0, to: 5 } }
+          };
+          return shapes[info.quality] || shapes[''];
+        }
+      }
+
+      function buildGuitarSvg(voicing) {
+        const frets = voicing.frets;
+        const fingers = voicing.fingers || [0,0,0,0,0,0];
+        const positive = frets.filter(f => f > 0);
+        const maxF = positive.length ? Math.max(...positive) : 3;
+        const minF = positive.length ? Math.min(...positive) : 1;
+        const baseFret = maxF > 5 ? minF : 1;
+
+        const W = 190, H = 175;
+        const left = 36, top = 30, sw = 24, fh = 26;
+        let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
+
+        if (baseFret === 1) {
+          svg += `<line x1="${left}" y1="${top}" x2="${left + sw * 5}" y2="${top}" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>`;
+        } else {
+          svg += `<line x1="${left}" y1="${top}" x2="${left + sw * 5}" y2="${top}" stroke="currentColor" stroke-width="1.5"/>`;
+          svg += `<text x="${left - 10}" y="${top + fh * 0.65}" text-anchor="end" font-size="11" font-weight="800" fill="var(--primary)">${baseFret}fr</text>`;
+        }
+
+        for (let r = 1; r <= 5; r++) {
+          const y = top + r * fh;
+          svg += `<line x1="${left}" y1="${y}" x2="${left + sw * 5}" y2="${y}" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.2"/>`;
+        }
+
+        const strNames = ['E', 'A', 'D', 'G', 'B', 'e'];
+        for (let s = 0; s < 6; s++) {
+          const x = left + s * sw;
+          svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + fh * 5}" stroke="currentColor" stroke-opacity="0.5" stroke-width="${1.8 - s * 0.14}"/>`;
+          svg += `<text x="${x}" y="${top + fh * 5 + 14}" text-anchor="middle" font-size="9.5" fill="var(--text-muted)" font-weight="700">${strNames[s]}</text>`;
+        }
+
+        if (voicing.barre) {
+          const bf = voicing.barre.fret - baseFret + 1;
+          if (bf >= 1 && bf <= 5) {
+            const x1 = left + voicing.barre.from * sw;
+            const x2 = left + voicing.barre.to * sw;
+            const y = top + (bf - 0.5) * fh;
+            svg += `<rect x="${x1 - 7}" y="${y - 7}" width="${x2 - x1 + 14}" height="14" rx="7" fill="var(--primary)"/>`;
+          }
+        }
+
+        for (let s = 0; s < 6; s++) {
+          const x = left + s * sw;
+          const f = frets[s];
+          if (f === -1) {
+            svg += `<text x="${x}" y="${top - 10}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text-muted)">✕</text>`;
+          } else if (f === 0) {
+            svg += `<circle cx="${x}" cy="${top - 14}" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/>`;
+          } else {
+            const rel = f - baseFret + 1;
+            if (rel >= 1 && rel <= 5) {
+              const y = top + (rel - 0.5) * fh;
+              svg += `<circle cx="${x}" cy="${y}" r="8" fill="var(--primary)"/>`;
+              if (fingers[s] > 0) {
+                svg += `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="9.5" font-weight="800" fill="var(--primary-contrast)">${fingers[s]}</text>`;
+              }
+            }
+          }
+        }
+        svg += `</svg>`;
+        return svg;
+      }
+
+      function buildPianoSvg(info) {
+        const activeKeys = new Set();
+        let start = info.rootIdx;
+        if (info.bassIdx >= 0 && info.bassIdx !== info.rootIdx) {
+          activeKeys.add(info.bassIdx);
+          start = info.rootIdx < info.bassIdx ? info.rootIdx + 12 : info.rootIdx;
+        }
+        info.intervals.forEach(iv => {
+          const k = start + iv;
+          activeKeys.add(k < 24 ? k : k % 12);
+        });
+
+        const whiteMap = [0, 2, 4, 5, 7, 9, 11];
+        const kw = 22, kh = 92, bkw = 13, bkh = 56;
+        const W = kw * 14 + 4, H = kh + 8;
+
+        let svg = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="max-width:100%; height:auto;" xmlns="http://www.w3.org/2000/svg">`;
+
+        for (let oct = 0; oct < 2; oct++) {
+          for (let i = 0; i < 7; i++) {
+            const semi = oct * 12 + whiteMap[i];
+            const x = 2 + (oct * 7 + i) * kw;
+            const hit = activeKeys.has(semi);
+            svg += `<rect x="${x}" y="2" width="${kw - 1}" height="${kh}" rx="3" fill="${hit ? 'var(--primary)' : '#ffffff'}" stroke="#475569" stroke-width="1"/>`;
+          }
+        }
+
+        const blackOffsets = [
+          { semi: 1, pos: 0.68 }, { semi: 3, pos: 1.72 },
+          { semi: 6, pos: 3.68 }, { semi: 8, pos: 4.70 }, { semi: 10, pos: 5.72 }
+        ];
+        for (let oct = 0; oct < 2; oct++) {
+          blackOffsets.forEach(bk => {
+            const semi = oct * 12 + bk.semi;
+            const x = 2 + (oct * 7 + bk.pos) * kw;
+            const hit = activeKeys.has(semi);
+            svg += `<rect x="${x}" y="2" width="${bkw}" height="${bkh}" rx="2.5" fill="${hit ? 'var(--primary)' : '#1e293b'}" stroke="#0f172a" stroke-width="1"/>`;
+          });
+        }
+
+        svg += `</svg>`;
+        return svg;
+      }
+
+      function playChordSound(info) {
+        const ctx = getAudioCtx();
+        const now = ctx.currentTime;
+        const midiNotes = [];
+        if (info.bassIdx >= 0 && info.bassIdx !== info.rootIdx) midiNotes.push(48 + info.bassIdx);
+        info.intervals.forEach(iv => midiNotes.push(60 + info.rootIdx + iv));
+
+        midiNotes.forEach((midi, idx) => {
+          const freq = 440 * Math.pow(2, (midi - 69) / 12);
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.035);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.035);
+          gain.gain.linearRampToValueAtTime(0.14, now + idx * 0.035 + 0.04);
+          gain.gain.exponentialRampToValueAtTime(0.0008, now + idx * 0.035 + 1.35);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.035);
+          osc.stop(now + idx * 0.035 + 1.4);
+        });
+      }
+
+      function openChordDiagramModal(chordStr) {
+        const info = parseChordInfo(chordStr);
+        if (!info) {
+          showToast(`Acorde: ${chordStr}`);
+          return;
+        }
+        const notesText = info.noteIndices.map(i => `${CHROMATIC_SHARP[i]} (${NOTE_NAMES_ES[i]})`).join(' • ');
+        const voicing = getGuitarVoicing(info);
+
+        openModal(`
+          <div class="row-between">
+            <div>
+              <h3 class="section-title" style="font-size:1.45rem; color:var(--primary);">${esc(info.name)}</h3>
+              <p class="section-desc">Notas: ${esc(notesText)}</p>
+            </div>
+            <button type="button" id="cd-close" class="mini-icon-btn" style="font-size:1.3rem;">&times;</button>
+          </div>
+
+          <button type="button" id="cd-play" class="btn btn-primary btn-sm" style="align-self:flex-start;">
+            🔊 Escuchar acorde
+          </button>
+
+          <div class="diagram-box">
+            <span class="field-label" style="margin:0;">🎸 Guitarra</span>
+            ${buildGuitarSvg(voicing)}
+          </div>
+
+          <div class="diagram-box">
+            <span class="field-label" style="margin:0;">🎹 Teclado / Piano</span>
+            ${buildPianoSvg(info)}
+          </div>
+        `);
+
+        document.getElementById('cd-close').onclick = closeModal;
+        document.getElementById('cd-play').onclick = () => playChordSound(info);
+      }
+
+      // ===================================================================
+      // 11. TAB 2: VISOR, ATRIL, WHATSAPP & PRINT
+      // ===================================================================
+      function buildSheetHtml(lyrics, visualSteps, showChords) {
+        const rawBlocks = lyrics.split(/\n\s*\n/);
+        return rawBlocks.map(block => {
+          const linesHtml = block.split('\n').map(line => {
+            const trimmed = line.trim();
+            if (!trimmed) return '';
+
+            if (/^\[[A-ZÁÉÍÓÚÑ0-9\s]{3,}\]$/.test(trimmed) && !/^\[[A-G][#b]?(m|maj|min|dim|aug|sus|add|[0-9])*(\/[A-G][#b]?)?\]$/.test(trimmed)) {
+              return `<div class="lyric-section-hdr">${esc(trimmed.slice(1, -1))}</div>`;
+            }
+
+            if (!showChords) {
+              const cleanText = line.replace(/\[[^\]]+\]/g, '');
+              if (!cleanText.trim()) return '';
+              return `<div class="lyric-line"><span class="lyric-txt">${esc(cleanText)}</span></div>`;
+            }
+
+            const regex = /\[([^\]]+)\]/g;
+            let last = 0, match;
+            const segs = [];
+            while ((match = regex.exec(line)) !== null) {
+              if (match.index > last) {
+                const txt = line.slice(last, match.index);
+                if (segs.length === 0) segs.push({ chord: '', text: txt });
+                else segs[segs.length - 1].text += txt;
+              }
+              segs.push({ chord: transposeChord(match[1].trim(), visualSteps), text: '' });
+              last = regex.lastIndex;
+            }
+            if (last < line.length) {
+              const rest = line.slice(last);
+              if (segs.length === 0) segs.push({ chord: '', text: rest });
+              else segs[segs.length - 1].text += rest;
+            }
+            if (segs.length === 0) {
+              return `<div class="lyric-line"><span class="lyric-txt">${esc(line)}</span></div>`;
+            }
+
+            return `<div class="lyric-line">${segs.map(s => `
+              <span class="lyric-seg">
+                ${s.chord
+                  ? `<button type="button" class="chord-tag clickable" data-chord-click="${esc(s.chord)}">${esc(s.chord)}</button>`
+                  : `<span class="chord-tag">&nbsp;</span>`}
+                <span class="lyric-txt">${esc(s.text || ' ')}</span>
+              </span>
+            `).join('')}</div>`;
+          }).join('');
+
+          return linesHtml ? `<div class="stanza-block">${linesHtml}</div>` : '';
+        }).join('');
+      }
+
+      function attachChordClickHandlers(container) {
+        container.querySelectorAll('[data-chord-click]').forEach(btn => {
+          btn.onclick = () => openChordDiagramModal(btn.dataset.chordClick);
+        });
+      }
+
+      function openVisor(songId, listId = null, listIdx = 0) {
+        state.visorSongId = songId;
+        state.visorListId = listId;
+        state.visorListIndex = listIdx;
+        state.transpose = 0;
+        state.capo = 0;
+        document.getElementById('visor-capo-select').value = '0';
+        showTab('visor');
+      }
+
+      function renderVisor() {
+        const song = state.songs.find(s => s.id === state.visorSongId) || state.songs[0];
+        const sheet = document.getElementById('visor-sheet');
+        if (!song) {
+          sheet.innerHTML = `<div class="empty-state">No hay cantos en el cantoral.</div>`;
+          return;
+        }
+        state.visorSongId = song.id;
+
+        const soundingKey = transposeChord(song.key, state.transpose);
+        const visualSteps = state.transpose - state.capo;
+        const visualKey = transposeChord(song.key, visualSteps);
+
+        document.getElementById('visor-moment').textContent = song.moment;
+        document.getElementById('visor-season').textContent = song.season || 'Ordinario';
+        document.getElementById('visor-bpm-tag').textContent = song.bpm ? `${song.bpm} BPM` : '';
+        document.getElementById('visor-title').textContent = song.title;
+        document.getElementById('visor-key-now').textContent = soundingKey;
+
+        let summary = state.showChords
+          ? `Tono actual: ${soundingKey}`
+          : `Solo letra • Tono de referencia: ${soundingKey}`;
+        if (state.showChords && state.transpose !== 0) {
+          summary += ` (${state.transpose > 0 ? '+' : ''}${state.transpose} st)`;
+        }
+        if (state.showChords && state.capo > 0) {
+          summary += ` • Capo traste ${state.capo} (acordes en ${visualKey})`;
+        }
+        document.getElementById('visor-key-summary').textContent = summary;
+
+        // Direction Notes
+        const notesWrap = document.getElementById('visor-notes-wrap');
+        const notesText = document.getElementById('visor-notes-text');
+        const toggleNotesBtn = document.getElementById('btn-toggle-notes');
+        if (song.notes && song.notes.trim()) {
+          notesWrap.classList.remove('hidden');
+          notesText.textContent = song.notes;
+          notesText.classList.toggle('hidden', !state.notesVisible);
+          toggleNotesBtn.textContent = state.notesVisible ? 'Ocultar' : 'Mostrar';
+        } else {
+          notesWrap.classList.add('hidden');
+        }
+
+        // Reference Audio Player
+        const audioWrap = document.getElementById('visor-audio-wrap');
+        const audioPlayer = document.getElementById('visor-audio-player');
+        const audioSrc = state.sessionAudioMap[song.id] || song.audioUrl || '';
+        if (audioSrc) {
+          audioWrap.classList.remove('hidden');
+          if (audioPlayer.dataset.currentSrc !== audioSrc) {
+            audioPlayer.src = audioSrc;
+            audioPlayer.dataset.currentSrc = audioSrc;
+          }
+          document.getElementById('visor-audio-name').textContent = song.audioName || 'Audio de referencia';
+        } else {
+          audioWrap.classList.add('hidden');
+          audioPlayer.pause();
+          audioPlayer.removeAttribute('src');
+          audioPlayer.dataset.currentSrc = '';
+        }
+
+        sheet.style.fontSize = `${state.fontSize}px`;
+        sheet.classList.toggle('no-chords', !state.showChords);
+        sheet.classList.toggle('two-cols', state.twoCols);
+        sheet.innerHTML = buildSheetHtml(song.lyrics, visualSteps, state.showChords);
+        attachChordClickHandlers(sheet);
+
+        // List Navigation Bar
+        const listBar = document.getElementById('visor-list-bar');
+        const activeList = state.visorListId ? state.lists.find(l => l.id === state.visorListId) : null;
+        if (activeList && activeList.songIds.length > 0) {
+          listBar.classList.remove('hidden');
+          document.getElementById('visor-list-pos').textContent =
+            `Canto ${state.visorListIndex + 1} de ${activeList.songIds.length} • ${activeList.name}`;
+          document.getElementById('btn-visor-prev').disabled = state.visorListIndex <= 0;
+          document.getElementById('btn-visor-next').disabled = state.visorListIndex >= activeList.songIds.length - 1;
+        } else {
+          listBar.classList.add('hidden');
+        }
+      }
+
+      function shareSongWhatsApp() {
+        const song = state.songs.find(s => s.id === state.visorSongId);
+        if (!song) return;
+        const visualSteps = state.transpose - state.capo;
+        const soundingKey = transposeChord(song.key, state.transpose);
+
+        let text = `🎼 *${song.title}*\n`;
+        text += `⛪ ${song.moment} • ${song.season || 'Ordinario'}\n`;
+        if (state.showChords) {
+          text += `🎸 Tono: *${soundingKey}*${state.capo > 0 ? ` (Capo traste ${state.capo})` : ''}${song.bpm ? ` • ${song.bpm} BPM` : ''}\n`;
+        }
+        text += `\n`;
+
+        const formattedLyrics = song.lyrics.split('\n').map(line => {
+          if (!state.showChords) {
+            if (/^\[[A-ZÁÉÍÓÚÑ0-9\s]{3,}\]$/.test(line.trim())) return `*${line.trim()}*`;
+            return line.replace(/\[[^\]]+\]/g, '');
+          }
+          return line.replace(/\[([^\]]+)\]/g, (m, ch) => {
+            if (/^[A-ZÁÉÍÓÚÑ0-9\s]{3,}$/.test(ch) && !/^[A-G]/.test(ch)) return `*${m}*`;
+            return `[${transposeChord(ch.trim(), visualSteps)}]`;
+          });
+        }).join('\n');
+
+        text += formattedLyrics;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+      }
+
+      // ---- AUTO-SCROLL ----
+      let scrollRaf = null;
+      let scrollAcc = 0;
+
+      function toggleAutoScroll(force = null) {
+        state.scrollActive = force !== null ? force : !state.scrollActive;
+        document.getElementById('scroll-speed-bar').classList.toggle('hidden', !state.scrollActive);
+        const btn = document.getElementById('btn-scroll-toggle');
+        btn.textContent = state.scrollActive ? 'Pausar' : 'Scroll';
+        btn.className = `btn btn-sm ${state.scrollActive ? 'btn-soft' : 'btn-secondary'}`;
+
+        const aBtn = document.getElementById('atril-scroll-btn');
+        aBtn.textContent = state.scrollActive ? 'Pausar' : 'Scroll';
+        aBtn.classList.toggle('active-atril', state.scrollActive);
+
+        if (state.scrollActive) stepAutoScroll();
+        else if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
+      }
+
+      function stepAutoScroll() {
+        if (!state.scrollActive) return;
+        scrollAcc += state.scrollSpeed * 0.16;
+        if (scrollAcc >= 1) {
+          const px = Math.floor(scrollAcc);
+          scrollAcc -= px;
+          const atrilOpen = !document.getElementById('atril-overlay').classList.contains('hidden');
+          if (atrilOpen) document.getElementById('atril-scroll-area').scrollTop += px;
+          else window.scrollBy(0, px);
+        }
+        scrollRaf = requestAnimationFrame(stepAutoScroll);
+      }
+
+      // ---- MODO ATRIL + WAKE LOCK ----
+      function renderAtrilSheet() {
+        const song = state.songs.find(s => s.id === state.visorSongId);
+        if (!song) return;
+
+        const visualSteps = state.transpose - state.capo;
+        const soundingKey = transposeChord(song.key, state.transpose);
+        document.getElementById('atril-title').textContent = song.title;
+
+        let meta = state.showChords ? `Tono ${soundingKey}` : 'Solo letra';
+        if (state.showChords && state.capo > 0) meta += ` • Capo ${state.capo}`;
+        if (state.wakeLock) meta += ' • Pantalla activa';
+        document.getElementById('atril-meta').textContent = meta;
+
+        const sheet = document.getElementById('atril-sheet');
+        sheet.style.fontSize = `${state.atrilFontSize}px`;
+        sheet.classList.toggle('no-chords', !state.showChords);
+        sheet.classList.toggle('two-cols', state.twoCols);
+        sheet.innerHTML = buildSheetHtml(song.lyrics, visualSteps, state.showChords);
+        attachChordClickHandlers(sheet);
+
+        const nav = document.getElementById('atril-list-nav');
+        const activeList = state.visorListId ? state.lists.find(l => l.id === state.visorListId) : null;
+        if (activeList && activeList.songIds.length > 0) {
+          nav.classList.remove('hidden');
+          document.getElementById('atril-list-pos').textContent = `${state.visorListIndex + 1}/${activeList.songIds.length}`;
+          document.getElementById('atril-prev').disabled = state.visorListIndex <= 0;
+          document.getElementById('atril-next').disabled = state.visorListIndex >= activeList.songIds.length - 1;
+        } else {
+          nav.classList.add('hidden');
+        }
+      }
+
+      async function openAtril() {
+        if (!state.visorSongId) return;
+        document.getElementById('atril-overlay').classList.remove('hidden');
+        document.getElementById('atril-scroll-area').scrollTop = 0;
+        if ('wakeLock' in navigator) {
+          try { state.wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+        }
+        renderAtrilSheet();
+        updateFullscreenUI();
+      }
+
+      async function closeAtril() {
+        document.getElementById('atril-overlay').classList.add('hidden');
+        if (state.scrollActive) toggleAutoScroll(false);
+        if (state.wakeLock) {
+          try { await state.wakeLock.release(); } catch (e) {}
+          state.wakeLock = null;
+        }
+      }
+
+      function navigateListStep(delta) {
+        const activeList = state.visorListId ? state.lists.find(l => l.id === state.visorListId) : null;
+        if (!activeList) return;
+        const nextIdx = state.visorListIndex + delta;
+        if (nextIdx < 0 || nextIdx >= activeList.songIds.length) return;
+        state.visorListIndex = nextIdx;
+        state.visorSongId = activeList.songIds[nextIdx];
+        state.transpose = 0;
+        state.capo = 0;
+        document.getElementById('visor-capo-select').value = '0';
+        renderVisor();
+        if (!document.getElementById('atril-overlay').classList.contains('hidden')) {
+          document.getElementById('atril-scroll-area').scrollTop = 0;
+          renderAtrilSheet();
+        }
+      }
+
+      function printCurrentSong() {
+        const song = state.songs.find(s => s.id === state.visorSongId);
+        if (!song) return;
+
+        const visualSteps = state.transpose - state.capo;
+        const soundingKey = transposeChord(song.key, state.transpose);
+        const visualKey = transposeChord(song.key, visualSteps);
+
+        let meta = `${song.moment}  |  ${song.season || 'Ordinario'}`;
+        if (state.showChords) {
+          meta += `  |  Tono: ${soundingKey}`;
+          if (state.capo > 0) meta += `  |  Capo traste ${state.capo} (acordes en ${visualKey})`;
+          if (song.bpm) meta += `  |  ${song.bpm} BPM`;
+        } else {
+          meta += '  |  Solo letra';
+        }
+
+        const pSheet = document.getElementById('print-sheet');
+        pSheet.className = state.showChords ? '' : 'no-chords';
+        pSheet.innerHTML = `
+          <h1>${esc(song.title)}</h1>
+          <div class="p-meta">${esc(meta)}</div>
+          ${song.notes && state.showChords ? `<div class="p-notes">Indicaciones: ${esc(song.notes)}</div>` : ''}
+          <div class="p-body ${state.twoCols ? 'two-cols' : ''}">${buildSheetHtml(song.lyrics, visualSteps, state.showChords)}</div>
+        `;
+        window.print();
+      }
+
+      // ===================================================================
+      // 12. TAB 4: METRONOME (WEB AUDIO API 40-220 BPM)
+      // ===================================================================
+      function getTempoName(bpm) {
+        if (bpm < 60) return 'Largo / Solemne';
+        if (bpm < 76) return 'Adagio / Contemplativo';
+        if (bpm < 96) return 'Andante';
+        if (bpm < 116) return 'Moderato';
+        if (bpm < 144) return 'Allegro';
+        return 'Vivace / Presto';
+      }
+
+      function renderMetroLights() {
+        const el = document.getElementById('metro-lights');
+        let html = '';
+        for (let i = 0; i < state.metroTs; i++) {
+          html += `<div id="m-dot-${i}" class="beat-dot ${i === 0 ? 'accent-dot' : ''}">${i + 1}</div>`;
+        }
+        el.innerHTML = html;
+      }
+
+      function setBpm(val) {
+        state.metroBpm = Math.max(40, Math.min(220, Math.round(Number(val) || 80)));
+        document.getElementById('metro-bpm-val').textContent = state.metroBpm;
+        document.getElementById('metro-slider').value = state.metroBpm;
+        document.getElementById('metro-tempo-label').textContent = getTempoName(state.metroBpm);
+      }
+
+      function scheduleClick(beat, time) {
+        const ctx = getAudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const isOne = beat === 0;
+        const isSixMid = state.metroTs === 6 && beat === 3;
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isOne ? 1180 : (isSixMid ? 880 : 660), time);
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(isOne ? 0.65 : 0.35, time + 0.004);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.055);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(time);
+        osc.stop(time + 0.06);
+
+        const delay = Math.max(0, (time - ctx.currentTime) * 1000);
+        setTimeout(() => {
+          if (!state.metroRunning) return;
+          for (let i = 0; i < state.metroTs; i++) {
+            const dot = document.getElementById(`m-dot-${i}`);
+            if (dot) dot.classList.toggle('lit', i === beat);
+          }
+        }, delay);
+      }
+
+      function metroScheduler() {
+        const ctx = getAudioCtx();
+        while (state.metroNextTime < ctx.currentTime + 0.1) {
+          scheduleClick(state.metroBeat, state.metroNextTime);
+          const sec = 60 / state.metroBpm;
+          state.metroNextTime += state.metroTs === 6 ? sec * 0.5 : sec;
+          state.metroBeat = (state.metroBeat + 1) % state.metroTs;
+        }
+      }
+
+      function toggleMetronome() {
+        const btn = document.getElementById('btn-metro-play');
+        if (state.metroRunning) {
+          state.metroRunning = false;
+          clearInterval(state.metroTimer);
+          state.metroTimer = null;
+          renderMetroLights();
+          btn.textContent = '▶ Iniciar';
+        } else {
+          const ctx = getAudioCtx();
+          state.metroRunning = true;
+          state.metroBeat = 0;
+          state.metroNextTime = ctx.currentTime + 0.05;
+          state.metroTimer = setInterval(metroScheduler, 25);
+          btn.textContent = '■ Detener';
+        }
+      }
+
+      function tapTempo() {
+        const now = performance.now();
+        if (state.tapTimes.length && now - state.tapTimes[state.tapTimes.length - 1] > 2000) state.tapTimes = [];
+        state.tapTimes.push(now);
+        if (state.tapTimes.length > 5) state.tapTimes.shift();
+        if (state.tapTimes.length >= 2) {
+          let sum = 0;
+          for (let i = 1; i < state.tapTimes.length; i++) sum += state.tapTimes[i] - state.tapTimes[i - 1];
+          setBpm(60000 / (sum / (state.tapTimes.length - 1)));
+        }
+      }
+
+      // ===================================================================
+      // 13. TAB 5: ESTUDIO (AFINADOR, TONOS & GRABADORA)
+      // ===================================================================
+      function autoCorrelate(buf, sr) {
+        const SIZE = buf.length;
+        let rms = 0;
+        for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+        if (Math.sqrt(rms / SIZE) < 0.012) return -1;
+
+        let r1 = 0, r2 = SIZE - 1;
+        for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < 0.2) { r1 = i; break; } }
+        for (let i = 1; i < SIZE / 2; i++) { if (Math.abs(buf[SIZE - i]) < 0.2) { r2 = SIZE - i; break; } }
+
+        const slice = buf.slice(r1, r2);
+        const len = slice.length;
+        const c = new Float32Array(len);
+        for (let i = 0; i < len; i++) {
+          for (let j = 0; j < len - i; j++) c[i] += slice[j] * slice[j + i];
+        }
+
+        let d = 0;
+        while (c[d] > c[d + 1]) d++;
+        let maxVal = -1, maxPos = -1;
+        for (let i = d; i < len; i++) {
+          if (c[i] > maxVal) { maxVal = c[i]; maxPos = i; }
+        }
+        if (maxPos <= 0) return -1;
+
+        let T0 = maxPos;
+        const x1 = c[T0 - 1] || 0, x2 = c[T0], x3 = c[T0 + 1] || 0;
+        const a = (x1 + x3 - 2 * x2) / 2;
+        const b = (x3 - x1) / 2;
+        if (a) T0 -= b / (2 * a);
+        return sr / T0;
+      }
+
+      async function toggleTuner() {
+        const errEl = document.getElementById('tuner-err');
+        errEl.classList.add('hidden');
+        if (state.tunerRunning) { stopTuner(); return; }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          errEl.textContent = 'Micrófono no disponible en este navegador.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        try {
+          const ctx = getAudioCtx();
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          });
+          state.tunerStream = stream;
+          const src = ctx.createMediaStreamSource(stream);
+          state.tunerAnalyser = ctx.createAnalyser();
+          state.tunerAnalyser.fftSize = 2048;
+          src.connect(state.tunerAnalyser);
+          state.tunerRunning = true;
+          document.getElementById('btn-tuner-toggle').textContent = 'Detener Mic';
+          document.getElementById('tuner-status').textContent = 'Escuchando...';
+          tunerLoop();
+        } catch (err) {
+          errEl.textContent = 'Permiso de micrófono denegado o no disponible.';
+          errEl.classList.remove('hidden');
+        }
+      }
+
+      function stopTuner() {
+        state.tunerRunning = false;
+        if (state.tunerRaf) cancelAnimationFrame(state.tunerRaf);
+        if (state.tunerStream) {
+          state.tunerStream.getTracks().forEach(t => t.stop());
+          state.tunerStream = null;
+        }
+        document.getElementById('btn-tuner-toggle').textContent = 'Activar Mic';
+        document.getElementById('tuner-status').textContent = 'En espera';
+        const noteEl = document.getElementById('tuner-note');
+        noteEl.textContent = '--';
+        noteEl.className = 'tuner-note-big';
+        document.getElementById('tuner-freq').textContent = '0.0 Hz';
+        document.getElementById('tuner-cents').textContent = '0 cents';
+        document.getElementById('tuner-needle').style.left = 'calc(50% - 4px)';
+      }
+
+      function tunerLoop() {
+        if (!state.tunerRunning || !state.tunerAnalyser) return;
+        const buf = new Float32Array(state.tunerAnalyser.fftSize);
+        state.tunerAnalyser.getFloatTimeDomainData(buf);
+        const freq = autoCorrelate(buf, state.audioCtx.sampleRate);
+
+        if (freq > 55 && freq < 1400) {
+          const noteNum = 12 * (Math.log(freq / 440) / Math.log(2));
+          const midi = Math.round(noteNum) + 69;
+          const name = CHROMATIC_SHARP[(midi % 12 + 12) % 12];
+          const oct = Math.floor(midi / 12) - 1;
+          const exact = 440 * Math.pow(2, (midi - 69) / 12);
+          const cents = Math.round(1200 * Math.log(freq / exact) / Math.log(2));
+          const inTune = Math.abs(cents) <= 5;
+
+          const noteEl = document.getElementById('tuner-note');
+          noteEl.textContent = `${name}${oct}`;
+          noteEl.className = `tuner-note-big ${inTune ? 'in-tune' : 'off-tune'}`;
+          document.getElementById('tuner-freq').textContent = `${freq.toFixed(1)} Hz`;
+          document.getElementById('tuner-cents').textContent = `${cents > 0 ? '+' : ''}${cents} cents`;
+
+          const clamped = Math.max(-50, Math.min(50, cents));
+          const pct = 50 + (clamped / 50) * 45;
+          const needle = document.getElementById('tuner-needle');
+          needle.style.left = `calc(${pct}% - 4px)`;
+          needle.style.background = inTune ? 'var(--success)' : 'var(--primary)';
+          document.getElementById('tuner-status').textContent = inTune ? '¡Afinado!' : (cents < 0 ? 'Bajo (subir)' : 'Alto (bajar)');
+        }
+        state.tunerRaf = requestAnimationFrame(tunerLoop);
+      }
+
+      function renderReferenceToneButtons() {
+        const makeBtns = (list, prefix) => list.map((item, i) => `
+          <button type="button" class="tone-btn" data-ref-key="${prefix}-${i}" data-ref-freq="${item.freq}">
+            <span class="t-main">${item.label}</span>
+            <span class="t-sub">${item.sub}</span>
+          </button>
+        `).join('');
+
+        document.getElementById('guitar-tones-grid').innerHTML = makeBtns(GUITAR_STRINGS, 'g');
+        document.getElementById('vocal-tones-grid').innerHTML = makeBtns(VOCAL_SCALE, 'v');
+
+        document.querySelectorAll('.tone-btn').forEach(btn => {
+          btn.onclick = () => {
+            const key = btn.dataset.refKey;
+            const freq = parseFloat(btn.dataset.refFreq);
+            if (state.refActiveKey === key) { stopRefTone(); return; }
+            playRefTone(freq, key, btn);
+          };
+        });
+      }
+
+      function playRefTone(freq, key, btnEl) {
+        stopRefTone();
+        const ctx = getAudioCtx();
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.001, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.08);
+        master.connect(ctx.destination);
+
+        const oscs = [
+          { mult: 1, type: 'sine', vol: 0.65 },
+          { mult: 2, type: 'triangle', vol: 0.22 },
+          { mult: 3, type: 'sine', vol: 0.08 }
+        ].map(h => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = h.type;
+          o.frequency.setValueAtTime(freq * h.mult, ctx.currentTime);
+          g.gain.setValueAtTime(h.vol, ctx.currentTime);
+          o.connect(g);
+          g.connect(master);
+          o.start();
+          return o;
+        });
+
+        state.refNodes = { oscs, master };
+        state.refActiveKey = key;
+        document.getElementById('btn-ref-stop').classList.remove('hidden');
+        btnEl.classList.add('playing');
+      }
+
+      function stopRefTone() {
+        if (state.refNodes && state.audioCtx) {
+          const { oscs, master } = state.refNodes;
+          try {
+            master.gain.linearRampToValueAtTime(0.0001, state.audioCtx.currentTime + 0.06);
+            oscs.forEach(o => o.stop(state.audioCtx.currentTime + 0.08));
+          } catch (e) {}
+        }
+        state.refNodes = null;
+        state.refActiveKey = null;
+        document.getElementById('btn-ref-stop').classList.add('hidden');
+        document.querySelectorAll('.tone-btn.playing').forEach(b => b.classList.remove('playing'));
+      }
+
+      function resizeRecCanvas() {
+        const c = document.getElementById('rec-canvas');
+        if (!c || !c.parentElement) return;
+        c.width = c.parentElement.clientWidth || 300;
+        c.height = c.parentElement.clientHeight || 74;
+      }
+
+      async function startRecording() {
+        const errEl = document.getElementById('rec-err');
+        errEl.classList.add('hidden');
+        if (!navigator.mediaDevices || !window.MediaRecorder) {
+          errEl.textContent = 'Este navegador no soporta grabación de audio.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          state.recStream = stream;
+          state.recChunks = [];
+          const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+          const mime = mimes.find(m => MediaRecorder.isTypeSupported(m)) || '';
+          const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+
+          rec.ondataavailable = e => { if (e.data && e.data.size > 0) state.recChunks.push(e.data); };
+          rec.onstop = () => {
+            const blob = new Blob(state.recChunks, { type: rec.mimeType || 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const ext = (rec.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+            state.recordings.unshift({
+              id: 'rec-' + Date.now(),
+              name: `Ensayo ${state.recordings.length + 1}`,
+              duration: document.getElementById('rec-timer').textContent,
+              url, ext
+            });
+            renderRecordings();
+            showToast('Grabación guardada');
+          };
+
+          rec.start();
+          state.recRecorder = rec;
+          state.recRunning = true;
+          state.recStart = Date.now();
+
+          const ctx = getAudioCtx();
+          const src = ctx.createMediaStreamSource(stream);
+          state.recAnalyser = ctx.createAnalyser();
+          state.recAnalyser.fftSize = 128;
+          src.connect(state.recAnalyser);
+          resizeRecCanvas();
+          drawRecBars();
+
+          document.getElementById('btn-rec-start').disabled = true;
+          document.getElementById('btn-rec-stop').disabled = false;
+          document.getElementById('rec-dot').classList.add('live');
+
+          state.recTimerInt = setInterval(() => {
+            const total = Math.floor((Date.now() - state.recStart) / 1000);
+            const mm = String(Math.floor(total / 60)).padStart(2, '0');
+            const ss = String(total % 60).padStart(2, '0');
+            document.getElementById('rec-timer').textContent = `${mm}:${ss}`;
+          }, 250);
+        } catch (err) {
+          errEl.textContent = 'Permiso de micrófono denegado o no disponible.';
+          errEl.classList.remove('hidden');
+        }
+      }
+
+      function stopRecording() {
+        if (!state.recRunning) return;
+        state.recRunning = false;
+        if (state.recRecorder && state.recRecorder.state !== 'inactive') state.recRecorder.stop();
+        if (state.recStream) {
+          state.recStream.getTracks().forEach(t => t.stop());
+          state.recStream = null;
+        }
+        clearInterval(state.recTimerInt);
+        if (state.recRaf) cancelAnimationFrame(state.recRaf);
+
+        const c = document.getElementById('rec-canvas');
+        c.getContext('2d').clearRect(0, 0, c.width, c.height);
+
+        document.getElementById('btn-rec-start').disabled = false;
+        document.getElementById('btn-rec-stop').disabled = true;
+        document.getElementById('rec-dot').classList.remove('live');
+      }
+
+      function drawRecBars() {
+        if (!state.recRunning || !state.recAnalyser) return;
+        const c = document.getElementById('rec-canvas');
+        const g = c.getContext('2d');
+        const len = state.recAnalyser.frequencyBinCount;
+        const arr = new Uint8Array(len);
+        state.recAnalyser.getByteFrequencyData(arr);
+
+        g.clearRect(0, 0, c.width, c.height);
+        const bw = (c.width / len) * 1.6;
+        let x = 0;
+        g.fillStyle = state.theme.primary;
+        for (let i = 0; i < len; i++) {
+          const h = Math.max(4, (arr[i] / 255) * (c.height - 10));
+          g.fillRect(x, (c.height - h) / 2, Math.max(2, bw - 2), h);
+          x += bw;
+          if (x > c.width) break;
+        }
+        state.recRaf = requestAnimationFrame(drawRecBars);
+      }
+
+      function renderRecordings() {
+        const list = document.getElementById('rec-list');
+        document.getElementById('rec-count').textContent =
+          `${state.recordings.length} ${state.recordings.length === 1 ? 'audio' : 'audios'}`;
+
+        if (state.recordings.length === 0) {
+          list.innerHTML = `<div class="empty-state">Aún no hay grabaciones en esta sesión.</div>`;
+          return;
+        }
+
+        list.innerHTML = state.recordings.map(r => `
+          <div class="card" style="padding:12px 14px; display:flex; flex-direction:column; gap:9px;">
+            <div class="row-between">
+              <input type="text" class="input" data-rec-name="${r.id}" value="${esc(r.name)}" style="padding:5px 8px; font-weight:700; font-size:0.86rem; flex:1;" />
+              <span style="font-family:monospace; font-size:0.78rem; color:var(--text-muted);">${r.duration}</span>
+            </div>
+            <audio controls src="${r.url}" style="width:100%; height:36px;"></audio>
+            <div class="row" style="justify-content:flex-end;">
+              <a href="${r.url}" download="${esc(r.name)}.${r.ext}" class="btn btn-soft btn-sm" style="text-decoration:none;">Descargar</a>
+              <button type="button" class="btn btn-danger btn-sm" data-rec-del="${r.id}">Eliminar</button>
+            </div>
+          </div>
+        `).join('');
+
+        list.querySelectorAll('[data-rec-name]').forEach(inp => {
+          inp.onchange = () => {
+            const rec = state.recordings.find(x => x.id === inp.dataset.recName);
+            if (rec && inp.value.trim()) rec.name = inp.value.trim();
+          };
+        });
+
+        list.querySelectorAll('[data-rec-del]').forEach(btn => {
+          btn.onclick = () => {
+            const rec = state.recordings.find(x => x.id === btn.dataset.recDel);
+            if (!rec) return;
+            confirmDialog('Eliminar Grabación', `¿Deseas eliminar "${rec.name}"?`, 'Eliminar', () => {
+              URL.revokeObjectURL(rec.url);
+              state.recordings = state.recordings.filter(x => x.id !== rec.id);
+              renderRecordings();
+            });
+          };
+        });
+      }
+
+      // ===================================================================
+      // 14. EVENT BINDINGS & INITIALIZATION
+      // ===================================================================
+      function bindEvents() {
+        // Top Bar
+        document.getElementById('btn-admin-role').onclick = () => {
+          if (state.isAdmin) openAdminPanelModal();
+          else openAdminLoginModal();
+        };
+        document.getElementById('btn-notice-unlock').onclick = openAdminLoginModal;
+        document.getElementById('btn-banner-lock').onclick = () => {
+          setAdminMode(false);
+          showToast('Sesión bloqueada • Modo Coro');
+        };
+        document.getElementById('btn-open-theme').onclick = openThemeModal;
+        document.getElementById('btn-fullscreen-top').onclick = toggleFullscreen;
+        document.getElementById('btn-atril-fs').onclick = toggleFullscreen;
+        document.addEventListener('fullscreenchange', updateFullscreenUI);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+
+        // Bottom Nav
+        document.querySelectorAll('.nav-item').forEach(btn => {
+          btn.onclick = () => showTab(btn.dataset.tab);
+        });
+
+        // Estudio Sub-tabs
+        document.getElementById('subtab-afinador').onclick = () => showEstudioSub('afinador');
+        document.getElementById('subtab-tonos').onclick = () => showEstudioSub('tonos');
+        document.getElementById('subtab-grabadora').onclick = () => showEstudioSub('grabadora');
+
+        // Cantoral
+        document.getElementById('search-input').oninput = e => { state.searchQuery = e.target.value; renderSongsList(); };
+        document.getElementById('filter-moment').onchange = e => { state.filterMoment = e.target.value; renderSongsList(); };
+        document.getElementById('filter-season').onchange = e => { state.filterSeason = e.target.value; renderSongsList(); };
+        document.getElementById('btn-new-song').onclick = () => openSongFormModal(null);
+        document.getElementById('btn-export-json').onclick = exportBackupJSON;
+        document.getElementById('input-import-json').onchange = e => {
+          if (e.target.files && e.target.files[0]) {
+            importBackupJSON(e.target.files[0]);
+            e.target.value = '';
+          }
+        };
+
+        // Listas (ALWAYS ACTIVE)
+        document.getElementById('btn-new-list').onclick = () => openListMetaModal(null);
+        document.getElementById('btn-rename-list').onclick = () => {
+          const active = getActiveList();
+          if (active) openListMetaModal(active);
+        };
+        document.getElementById('btn-delete-list').onclick = () => {
+          const active = getActiveList();
+          if (!active) return;
+          confirmDialog('Eliminar Listado', `¿Deseas eliminar el listado "${active.name}"?`, 'Eliminar', () => {
+            state.lists = state.lists.filter(l => l.id !== active.id);
+            state.activeListId = state.lists[0] ? state.lists[0].id : null;
+            if (state.visorListId === active.id) state.visorListId = null;
+            saveLists();
+            renderListasView();
+            showToast('Listado eliminado');
+          });
+        };
+        document.getElementById('btn-list-select-songs').onclick = openSongPickerModal;
+        document.getElementById('btn-list-start-atril').onclick = () => {
+          const active = getActiveList();
+          if (!active || active.songIds.length === 0) {
+            showToast('El listado no tiene cantos seleccionados');
+            return;
+          }
+          openVisor(active.songIds[0], active.id, 0);
+          openAtril();
+        };
+        document.getElementById('btn-list-whatsapp').onclick = shareListWhatsApp;
+        document.getElementById('btn-list-print').onclick = printActiveList;
+
+        // Visor
+        document.getElementById('btn-chords-on').onclick = () => setShowChords(true);
+        document.getElementById('btn-chords-off').onclick = () => setShowChords(false);
+        document.getElementById('atril-chords-on').onclick = () => setShowChords(true);
+        document.getElementById('atril-chords-off').onclick = () => setShowChords(false);
+        document.getElementById('btn-col-1').onclick = () => setTwoCols(false);
+        document.getElementById('btn-col-2').onclick = () => setTwoCols(true);
+        document.getElementById('atril-cols-btn').onclick = () => setTwoCols(!state.twoCols);
+
+        document.getElementById('btn-visor-prev').onclick = () => navigateListStep(-1);
+        document.getElementById('btn-visor-next').onclick = () => navigateListStep(1);
+        document.getElementById('atril-prev').onclick = () => navigateListStep(-1);
+        document.getElementById('atril-next').onclick = () => navigateListStep(1);
+
+        document.getElementById('btn-tr-down').onclick = () => { state.transpose--; renderVisor(); };
+        document.getElementById('btn-tr-up').onclick = () => { state.transpose++; renderVisor(); };
+        document.getElementById('btn-tr-reset').onclick = () => { state.transpose = 0; renderVisor(); };
+        document.getElementById('visor-capo-select').onchange = e => {
+          state.capo = parseInt(e.target.value, 10) || 0;
+          renderVisor();
+        };
+        document.getElementById('btn-font-minus').onclick = () => { state.fontSize = Math.max(12, state.fontSize - 2); renderVisor(); };
+        document.getElementById('btn-font-plus').onclick = () => { state.fontSize = Math.min(28, state.fontSize + 2); renderVisor(); };
+        document.getElementById('btn-scroll-toggle').onclick = () => toggleAutoScroll();
+        document.getElementById('scroll-speed-range').oninput = e => {
+          state.scrollSpeed = parseInt(e.target.value, 10);
+          document.getElementById('scroll-speed-val').textContent = state.scrollSpeed;
+        };
+        document.getElementById('btn-open-atril').onclick = openAtril;
+        document.getElementById('btn-close-atril').onclick = closeAtril;
+        document.getElementById('atril-font-dec').onclick = () => {
+          state.atrilFontSize = Math.max(14, state.atrilFontSize - 2);
+          document.getElementById('atril-sheet').style.fontSize = `${state.atrilFontSize}px`;
+        };
+        document.getElementById('atril-font-inc').onclick = () => {
+          state.atrilFontSize = Math.min(34, state.atrilFontSize + 2);
+          document.getElementById('atril-sheet').style.fontSize = `${state.atrilFontSize}px`;
+        };
+        document.getElementById('atril-scroll-btn').onclick = () => toggleAutoScroll();
+
+        document.getElementById('btn-toggle-notes').onclick = () => {
+          state.notesVisible = !state.notesVisible;
+          renderVisor();
+        };
+        document.getElementById('btn-visor-edit').onclick = () => {
+          if (state.visorSongId) openSongFormModal(state.visorSongId);
+        };
+        document.getElementById('btn-visor-del').onclick = () => {
+          if (state.visorSongId) deleteSongWithConfirm(state.visorSongId);
+        };
+        document.getElementById('btn-visor-wa').onclick = shareSongWhatsApp;
+        document.getElementById('btn-visor-print').onclick = printCurrentSong;
+
+        // Metronome
+        document.getElementById('btn-bpm-dec5').onclick = () => setBpm(state.metroBpm - 5);
+        document.getElementById('btn-bpm-dec1').onclick = () => setBpm(state.metroBpm - 1);
+        document.getElementById('btn-bpm-inc1').onclick = () => setBpm(state.metroBpm + 1);
+        document.getElementById('btn-bpm-inc5').onclick = () => setBpm(state.metroBpm + 5);
+        document.getElementById('metro-slider').oninput = e => setBpm(e.target.value);
+        document.getElementById('btn-metro-play').onclick = toggleMetronome;
+        document.getElementById('btn-metro-tap').onclick = tapTempo;
+        document.getElementById('btn-metro-load-song').onclick = () => {
+          const song = state.songs.find(s => s.id === state.visorSongId);
+          if (song && song.bpm) {
+            setBpm(song.bpm);
+            showToast(`BPM cargado: ${song.bpm} (${song.title})`);
+          } else {
+            showToast('El canto actual no tiene BPM asignado');
+          }
+        };
+        document.querySelectorAll('.ts-btn').forEach(btn => {
+          btn.onclick = () => {
+            state.metroTs = parseInt(btn.dataset.ts, 10);
+            state.metroBeat = 0;
+            document.querySelectorAll('.ts-btn').forEach(b => {
+              b.className = `ts-btn btn btn-sm ${b === btn ? 'btn-soft' : 'btn-secondary'}`;
+            });
+            renderMetroLights();
+          };
+        });
+
+        // Estudio: Tuner, Tones, Recorder
+        document.getElementById('btn-tuner-toggle').onclick = toggleTuner;
+        document.getElementById('btn-ref-stop').onclick = stopRefTone;
+        document.getElementById('btn-rec-start').onclick = startRecording;
+        document.getElementById('btn-rec-stop').onclick = stopRecording;
+        window.addEventListener('resize', resizeRecCanvas);
+
+        // Close modal on backdrop click
+        document.getElementById('modal-backdrop').onclick = e => {
+          if (e.target.id === 'modal-backdrop') closeModal();
+        };
+      }
+
+      function init() {
+        loadStorage();
+        applyTheme(state.theme.primary, state.theme.dark, false);
+        populateCantoralFilters();
+        bindEvents();
+        syncAdminUI();
+        updateFullscreenUI();
+        syncVisorToggleUI();
+        renderSongsList();
+        updateListasNavBadge();
+        renderListasView();
+        renderVisor();
+        renderMetroLights();
+        setBpm(80);
+        renderReferenceToneButtons();
+        renderRecordings();
+      }
+
+      document.addEventListener('DOMContentLoaded', init);
+    })();
+  </script>
+</body>
+</html>
