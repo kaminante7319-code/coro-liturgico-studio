@@ -2243,7 +2243,30 @@
               <button id="btn-rec-lyrics-toggle" type="button" class="btn btn-secondary btn-sm">Mostrar</button>
             </div>
           </div>
-          <select id="rec-song-select" class="select"></select>
+          <div id="rec-queue-tools" style="text-align:left;display:flex;flex-direction:column;gap:6px;margin:4px 0;">
+            <details class="card" style="padding:8px 10px;margin:0;">
+              <summary style="cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px;">🎼 Buscar cantos <small style="font-weight:400;color:var(--text-muted);">Añadir por nombre o letra</small></summary>
+              <div style="display:flex;flex-direction:column;gap:7px;margin-top:9px;">
+                <input id="rec-song-search" class="input" type="search" placeholder="Buscar canto por nombre o palabras…" aria-label="Buscar canto para ensayo" />
+                <div class="row" style="gap:6px;flex-wrap:wrap;">
+                  <button id="btn-rec-add-search" type="button" class="btn btn-primary btn-sm">＋ Añadir resultado</button>
+                </div>
+                <div id="rec-search-results" style="display:flex;flex-direction:column;gap:4px;max-height:180px;overflow:auto;"></div>
+              </div>
+            </details>
+            <details class="card" style="padding:8px 10px;margin:0;">
+              <summary style="cursor:pointer;font-weight:700;">📋 Cargar lista de cantos</summary>
+              <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:9px;">
+                <select id="rec-list-load-select" class="select" style="flex:1;min-width:140px;"><option value="">Cargar una lista creada…</option></select>
+                <button id="btn-rec-load-list" type="button" class="btn btn-secondary btn-sm">Cargar lista</button>
+              </div>
+            </details>
+            <details class="card" style="padding:8px 10px;margin:0;">
+              <summary style="cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px;">🗂️ Cola de ensayo <span id="rec-queue-count" class="rec-mic-status" style="margin-left:auto;">0 cantos</span></summary>
+              <div id="rec-queue-list" style="display:flex;flex-direction:column;gap:4px;margin-top:9px;max-height:190px;overflow:auto;"></div>
+            </details>
+          </div>
+          <select id="rec-song-select" class="select" aria-label="Canto actualmente seleccionado para grabar"></select>
           <div id="rec-lyrics-box" class="rec-lyrics-box hidden" style="font-size:16px;"></div>
         </div>
 
@@ -2640,6 +2663,8 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
         recAnalyser: null,
         recRaf: null,
         recSongId: null,
+        recQueue: [],
+        recSearchMatchId: null,
         recLyricsVisible: false,
         recShowChords: true,
         recScrollActive: false,
@@ -4886,7 +4911,7 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
           }
           state.recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           micBtn.textContent = '🎙️ Desactivar micrófono';
-          micStatus.textContent = 'Micrófono habilitado';
+          micStatus.textContent = 'Micrófono activado';
           micStatus.classList.add('enabled');
           document.getElementById('btn-rec-start').disabled = false;
         } catch (err) {
@@ -4913,6 +4938,12 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
             ? state.recStream
             : await navigator.mediaDevices.getUserMedia({ audio: true });
           state.recStream = stream;
+          // Keep recorder UI synchronized with the actual live audio stream.
+          const micBtn = document.getElementById('btn-rec-mic');
+          const micStatus = document.getElementById('rec-mic-status');
+          if (micBtn) micBtn.textContent = '🎙️ Desactivar micrófono';
+          if (micStatus) { micStatus.textContent = 'Micrófono activado'; micStatus.classList.add('enabled'); }
+          document.getElementById('rec-err').classList.add('hidden');
           state.recChunks = [];
           const mimes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
           const mime = mimes.find(m => MediaRecorder.isTypeSupported(m)) || '';
@@ -5032,6 +5063,31 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
         if (state.visorSongId === song.id) renderVisor();
         showToast(`Audio fijado en "${song.title}"`);
       }
+
+      function refreshRecQueueTools() {
+        try {
+        const search=document.getElementById('rec-song-search'), results=document.getElementById('rec-search-results'), listSel=document.getElementById('rec-list-load-select'), queueEl=document.getElementById('rec-queue-list'), countEl=document.getElementById('rec-queue-count');
+        if(!results||!queueEl)return;
+        const q=(search?.value||'').trim().toLowerCase();
+        const songs=Array.isArray(state.songs)?state.songs:[];
+        const lists=Array.isArray(state.lists)?state.lists:[];
+        const queue=Array.isArray(state.recQueue)?state.recQueue:[];
+        const matches=songs.filter(song=>!q||`${song.title||''} ${song.moment||''} ${song.key||''} ${song.lyrics||''}`.toLowerCase().includes(q));
+        if(!state.recSearchMatchId||!matches.some(song=>song.id===state.recSearchMatchId))state.recSearchMatchId=matches[0]?.id||null;
+        results.innerHTML=matches.slice(0,30).map(song=>`<button type="button" class="btn btn-secondary btn-sm" data-rec-search-song="${esc(song.id)}" style="text-align:left;justify-content:flex-start;">${esc(song.title)}${queue.includes(song.id)?' ✓ En cola':''}</button>`).join('')||'<small class="empty-state">No se encontraron cantos.</small>';
+        if(listSel)listSel.innerHTML='<option value="">Cargar una lista creada…</option>'+lists.map(l=>`<option value="${esc(l.id)}">${esc(l.name)} (${(Array.isArray(l.songIds)?l.songIds:[]).length})</option>`).join('');
+        queueEl.innerHTML=queue.map((id,i)=>{const song=songs.find(s=>s.id===id);if(!song)return '';return `<div class="row-between" style="gap:4px;border:1px solid var(--border);border-radius:8px;padding:5px 7px;"><button type="button" class="btn btn-secondary btn-sm" data-rec-select="${esc(id)}" style="flex:1;text-align:left;">${i+1}. ${esc(song.title)}</button><button type="button" class="btn btn-secondary btn-sm" data-rec-up="${i}" title="Subir">↑</button><button type="button" class="btn btn-secondary btn-sm" data-rec-down="${i}" title="Bajar">↓</button><button type="button" class="btn btn-secondary btn-sm" data-rec-remove="${esc(id)}" title="Quitar">×</button></div>`;}).join('')||'<small class="empty-state">Añade cantos o carga una lista para preparar tu ensayo.</small>';
+        if(countEl)countEl.textContent=`${queue.length} ${queue.length===1?'canto':'cantos'}`;
+        results.querySelectorAll('[data-rec-search-song]').forEach(btn=>btn.onclick=()=>addRecQueueSong(btn.getAttribute('data-rec-search-song')));
+        queueEl.querySelectorAll('[data-rec-select]').forEach(btn=>btn.onclick=()=>{state.recSongId=btn.getAttribute('data-rec-select');populateRecSongSelect();renderRecLyricsBox();showToast('Canto listo para grabar');});
+        queueEl.querySelectorAll('[data-rec-remove]').forEach(btn=>btn.onclick=()=>{state.recQueue=state.recQueue.filter(id=>id!==btn.getAttribute('data-rec-remove'));refreshRecQueueTools();});
+        queueEl.querySelectorAll('[data-rec-up]').forEach(btn=>btn.onclick=()=>moveRecQueue(+btn.dataset.recUp,-1));
+        queueEl.querySelectorAll('[data-rec-down]').forEach(btn=>btn.onclick=()=>moveRecQueue(+btn.dataset.recDown,1));
+              } catch (err) { console.warn('Cola de cantos: error aislado', err); }
+      }
+      function addRecQueueSong(id){if(!id||!state.songs.some(s=>s.id===id))return;if(state.recQueue.includes(id)){showToast('Ese canto ya está en la cola');return;}state.recQueue.push(id);state.recSongId=id;populateRecSongSelect();refreshRecQueueTools();showToast('Canto añadido al ensayo');}
+      function moveRecQueue(index,delta){const next=index+delta;if(next<0||next>=state.recQueue.length)return;const a=state.recQueue;[a[index],a[next]]=[a[next],a[index]];refreshRecQueueTools();}
+      function loadRecQueueList(){const id=document.getElementById('rec-list-load-select')?.value;const list=state.lists.find(l=>l.id===id);if(!list)return;const added=list.songIds.filter(songId=>state.songs.some(s=>s.id===songId)&&!state.recQueue.includes(songId));state.recQueue=[...state.recQueue,...added];if(added.length)state.recSongId=added[0];populateRecSongSelect();refreshRecQueueTools();showToast(`${list.name}: ${added.length} canto(s) añadidos`);}
 
       function populateRecSongSelect() {
         const sel = document.getElementById('rec-song-select');
@@ -5344,6 +5400,9 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
         document.getElementById('btn-visor-rec-assign').onclick = () => {
           if (state.lastRecId) assignRecordingToSong(state.lastRecId, state.visorSongId);
         };
+        document.getElementById('rec-song-search').oninput = () => refreshRecQueueTools();
+        document.getElementById('btn-rec-add-search').onclick = () => addRecQueueSong(state.recSearchMatchId);
+        document.getElementById('btn-rec-load-list').onclick = loadRecQueueList;
         document.getElementById('rec-song-select').onchange = e => {
           state.recSongId = e.target.value;
           state.recLyricsVisible = true;
@@ -5438,6 +5497,7 @@ Ho[Gm]sanna en el [C7]cielo, ho[Bb]sanna al Se[F]ñor.`
         setBpm(80);
         renderReferenceToneButtons();
         populateRecSongSelect();
+        try { refreshRecQueueTools(); } catch (err) { console.warn('Cola de cantos no inicializada', err); }
         renderRecordings();
       }
       
