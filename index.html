@@ -1430,6 +1430,47 @@
       font-weight: 600;
       margin-top: 2px;
     }
+    let eventoInstalacion = null;
+const btnInstalarApp = document.getElementById('btn-instalar-app');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Evita que Chrome muestre el banner automático antes de tiempo
+  e.preventDefault();
+  eventoInstalacion = e;
+
+  // Muestra el botón dentro de Coro Litúrgico Studio
+  if (btnInstalarApp) {
+    btnInstalarApp.style.display = 'inline-flex';
+    btnInstalarApp.style.alignItems = 'center';
+    btnInstalarApp.style.gap = '6px';
+  }
+});
+
+if (btnInstalarApp) {
+  btnInstalarApp.addEventListener('click', async () => {
+    if (!eventoInstalacion) return;
+
+    // Abre el diálogo de instalación del sistema
+    eventoInstalacion.prompt();
+
+    // Espera la decisión del usuario
+    const { outcome } = await eventoInstalacion.userChoice;
+    console.log('Resultado de instalación:', outcome);
+
+    // Limpia el evento y oculta el botón
+    eventoInstalacion = null;
+    btnInstalarApp.style.display = 'none';
+  });
+}
+
+window.addEventListener('appinstalled', () => {
+  console.log('Coro Litúrgico Studio instalada en el dispositivo');
+  eventoInstalacion = null;
+  if (btnInstalarApp) {
+    btnInstalarApp.style.display = 'none';
+  }
+});
+
   </style>
 </head>
 <body>
