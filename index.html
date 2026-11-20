@@ -17,21 +17,7 @@
   <!-- Embedded PWA Manifest (Data-URI) -->
   <link rel="manifest" href="./manifest.json" />
   <button id="btn-instalar-app" type="button" style="display: none;">
-  Instalar App
-  </button>
-  #btn-instalar-app {
-  background: #d97706;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-#btn-instalar-app:hover {
-  background: #b45309;
+  
 }
   
 
@@ -1445,6 +1431,21 @@ window.addEventListener('beforeinstallprompt', (e) => {
     btnInstalarApp.style.gap = '6px';
   }
 });
+    Instalar App
+  </button>
+  #btn-instalar-app {
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#btn-instalar-app:hover {
+  background: #b45309;
 
 if (btnInstalarApp) {
   btnInstalarApp.addEventListener('click', async () => {
